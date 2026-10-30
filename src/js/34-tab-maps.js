@@ -551,6 +551,16 @@
           );
         })();
 
+        // 「画像を差し替え」のファイル選択（控えめなリンク・未登録案内のボタン共通）
+        const onReplaceFileChange = e => {
+          const file = e.target.files[0];
+          e.target.value = '';
+          if (!file) return;
+          replaceMapImage(selected, file).then(ok => {
+            if (ok) setMapsLoadFailed(prev => ({ ...prev, [selected]: false }));
+          });
+        };
+
         return (
           <div ref={mapsContainerRef}>
             {/* マップ選択バー */}
@@ -574,19 +584,26 @@
                 <div style={{ marginTop: 6 }}>{selected} のマップ画像が未登録です。</div>
                 <div style={{ marginTop: 6, fontSize: 12, lineHeight: 1.6 }}>
                   地図画像は <a href={MAP_IMAGE_SOURCE_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>REƎMR EFTMAPS</a> から無料で入手できます。<br />
-                  ダウンロードした画像を、下の「画像を差し替え」から登録してください。
+                  ダウンロードした画像を「画像を差し替え」から登録してください。
+                  {meta && <><br />登録済みピンの位置はそのまま引き継がれます。</>}
                 </div>
                 <div style={{ marginTop: 4, fontSize: 10 }}>Maps by REƎMR — CC BY-NC-SA 4.0</div>
-                <button className="btn btn-gray" style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                  onClick={() => {
-                    setMapsLoadFailed(prev => ({ ...prev, [selected]: false }));
-                    ensureMapImageRegistered(selected).then(r => { if (!r) setMapsLoadFailed(prev => ({ ...prev, [selected]: true })); });
-                  }}>
-                  <Icon name="refresh" size={12} color="var(--text-secondary)" /> 再試行
-                </button>
+                <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <label className="btn btn-yellow" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }}>
+                    <Icon name="upload" size={12} color="var(--accent-on)" /> 画像を差し替え
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onReplaceFileChange} />
+                  </label>
+                  <button className="btn btn-gray" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                    onClick={() => {
+                      setMapsLoadFailed(prev => ({ ...prev, [selected]: false }));
+                      ensureMapImageRegistered(selected).then(r => { if (!r) setMapsLoadFailed(prev => ({ ...prev, [selected]: true })); });
+                    }}>
+                    <Icon name="refresh" size={12} color="var(--text-secondary)" /> 再試行
+                  </button>
+                </div>
               </div>
             ) : meta ? (
-              <div ref={mapsInnerContainerRef} style={{ position: 'relative', marginBottom: 12, border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+              <div ref={mapsInnerContainerRef} style={{ position: 'relative', marginBottom: 4, border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
                 {/* 操作モード案内（ズームに追従しない固定オーバーレイ） */}
                 {(isPlacing || isRepositioning || isReverseFlow) && (
                   <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
@@ -638,7 +655,11 @@
                   <img src={getMapImageSrc(selected, meta)} alt={selected}
                     style={{ width: '100%', display: 'block' }}
                     draggable={false}
-                    onClick={handleMapClick} />
+                    onClick={handleMapClick}
+                    onError={() => {
+                      // メタ（ピン座標の基準）は残したまま「未登録」表示へ（差し替え画像の読み込み失敗は対象外）
+                      if (!mapImageOverrides[selected]) setMapsLoadFailed(prev => ({ ...prev, [selected]: true }));
+                    }} />
 
                   {/* 登録済みピン — ピン配置中はクリック不可 */}
                   <div style={{ pointerEvents: (isPlacing || isRepositioning || isPendingCoord) ? 'none' : undefined }}>
@@ -684,28 +705,22 @@
               </div>
             )}
 
-            {/* マップ画像の差し替え（控えめなテキストリンク） */}
-            <div className="map-image-replace">
-              {mapImageOverrides[selected] && (
-                <>
-                  <span>差し替え画像を表示中</span>
-                  <button type="button" className="map-image-replace-link" onClick={() => resetMapImage(selected)}>元の画像に戻す</button>
-                  <span>/</span>
-                </>
-              )}
-              <label className="map-image-replace-link">
-                画像を差し替え
-                <input type="file" accept="image/*" style={{ display: 'none' }}
-                  onChange={e => {
-                    const file = e.target.files[0];
-                    e.target.value = '';
-                    if (!file) return;
-                    replaceMapImage(selected, file).then(ok => {
-                      if (ok) setMapsLoadFailed(prev => ({ ...prev, [selected]: false }));
-                    });
-                  }} />
-              </label>
-            </div>
+            {/* マップ画像の差し替え（控えめなテキストリンク・未登録時は上の案内内のボタンを使う） */}
+            {!mapsLoadFailed[selected] && (
+              <div className="map-image-replace">
+                {mapImageOverrides[selected] && (
+                  <>
+                    <span>差し替え画像を表示中</span>
+                    <button type="button" className="map-image-replace-link" onClick={() => resetMapImage(selected)}>元の画像に戻す</button>
+                    <span>/</span>
+                  </>
+                )}
+                <label className="map-image-replace-link">
+                  画像を差し替え
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onReplaceFileChange} />
+                </label>
+              </div>
+            )}
 
             {/* 逆順フロー：仮ピン後の目標絞り込み */}
             {isReverseFlow && (
