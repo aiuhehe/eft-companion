@@ -45,6 +45,41 @@
               document.getElementById(`event-task-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             };
             const doneCount = TASKS.filter(t => isBlackoutDone(t)).length;
+            const numOf = k => TASKS.findIndex(t => t.key === k) + 1;
+
+            // アイテムID → アイコンURL（API取得済みならそのiconLink、未取得なら tarkov.dev の画像URL規則で組み立て）
+            const neededIds = new Set([
+              ...TASKS.flatMap(t => [t, ...(t.variants || [])].flatMap(s => (s.rewardItems || []).map(r => r.id))),
+              ...EVENT_PREP.flatMap(p => p.itemIds || []),
+              ...Object.values(CURRENCY_ITEM_IDS),
+            ].filter(Boolean));
+            const apiIcons = {};
+            apiData.items.forEach(i => { if (neededIds.has(i.id) && i.iconLink && !i.iconLink.includes('unknown-item')) apiIcons[i.id] = i.iconLink; });
+            const itemIcon = id => id ? (apiIcons[id] || `https://assets.tarkov.dev/${id}-icon.webp`) : '';
+            const ItemImg = ({ id, size }) => id ? (
+              <img src={itemIcon(id)} alt="" className="event-item-img" style={{ width: size, height: size }}
+                onError={e => { e.target.style.display = 'none'; }} />
+            ) : null;
+
+            // カスタムタスクとして出撃準備タブに追加（同じタスクは上書き）
+            const customIdOf = t => `custom_event_${t.key}`;
+            const isAddedAsCustom = t => customTasks.some(ct => ct.id === customIdOf(t));
+            const addAsCustomTask = (t, variant) => {
+              const ct = eventTaskToCustomTask(t, variant, itemIcon);
+              saveCustomTasks([...customTasks.filter(x => x.id !== ct.id), ct]);
+              setPinnedTaskIds(prev => prev.includes(ct.id) ? prev : [...prev, ct.id]);
+            };
+            const AddCustomButton = ({ t, variant }) => {
+              const added = isAddedAsCustom(t);
+              return (
+                <button className="btn btn-sm btn-gray" onClick={() => addAsCustomTask(t, variant)}
+                  title={added ? '出撃準備タブのカスタムタスクを、この内容で上書きします' : '目標・報酬ごと出撃準備タブのカスタムタスクに登録し、進行中にします'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', color: added ? 'var(--state-ok-text)' : undefined }}>
+                  <Icon name={added ? 'circle-check' : 'plus'} size={12} color={added ? 'var(--state-ok-text)' : 'currentColor'} />
+                  {added ? 'カスタムタスク登録済み（上書き）' : 'カスタムタスクに追加'}
+                </button>
+              );
+            };
 
             const FlowNode = ({ k }) => {
               const t = byKey[k];
@@ -54,6 +89,10 @@
               return (
                 <button className={`event-flow-node is-${st}`} onClick={() => scrollToTask(k)}
                   style={{ borderLeftColor: branchColor(t) }} title={`${t.name}（${meta.label}）`}>
+                  <span className="event-flow-num" style={{
+                    background: st === 'done' ? 'var(--state-ok)' : st === 'open' ? 'var(--accent)' : 'var(--border)',
+                    color: st === 'done' ? '#fff' : st === 'open' ? 'var(--accent-on)' : 'var(--text-dim)',
+                  }}>{numOf(k)}</span>
                   <Icon name={meta.icon} size={14} color={meta.color} />
                   <span style={{ minWidth: 0 }}>
                     <span className="event-flow-name">{t.nameJa}</span>
@@ -92,7 +131,11 @@
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                 <MoneyBadges src={src} />
                 {(src.rewardItems || []).map((ri, ii) => (
-                  <span key={ii} className="reward-badge">
+                  <span key={ii} className="reward-badge event-reward-item"
+                    style={ri.unlock ? { background: 'var(--state-ok-deep)', border: '1px solid var(--state-ok)', color: 'var(--state-ok-text)' } : {}}>
+                    <ItemImg id={ri.id} size={20} />
+                    {ri.unlock && <Icon name="lock-open" size={11} color="var(--state-ok-text)" />}
+                    {ri.unlock ? `バーター解放 ${ri.unlock.trader} LL${ri.unlock.level}: ` : ''}
                     {ri.count > 1 ? `${ri.count}× ` : ''}{ri.name}
                   </span>
                 ))}
@@ -153,8 +196,15 @@
                   <div className="event-prep-grid">
                     {EVENT_PREP.map((p, i) => (
                       <div key={i} className="event-prep-item">
-                        <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--text-primary)' }}>{p.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{p.note}</div>
+                        {(p.itemIds || []).length > 0 && (
+                          <div className="event-prep-icons">
+                            {p.itemIds.map(id => <ItemImg key={id} id={id} size={36} />)}
+                          </div>
+                        )}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--text-primary)' }}>{p.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{p.note}</div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -281,6 +331,9 @@
                                     <ObjectiveList objectives={v.objectives} />
                                     <div style={{ fontSize: 11, color: 'var(--text-dim)', margin: '6px 0 5px' }}>報酬</div>
                                     <RewardList src={v} />
+                                    <div style={{ marginTop: 8 }}>
+                                      <AddCustomButton t={task} variant={v} />
+                                    </div>
                                   </div>
                                 ))}
                               </div>
@@ -307,6 +360,13 @@
                                     <span>{tip}</span>
                                   </div>
                                 ))}
+                              </div>
+                            )}
+
+                            {/* カスタムタスクとして出撃準備タブへ（分岐パターンがあるタスクは各パターン内のボタンから） */}
+                            {!task.variants && (
+                              <div style={{ padding: '6px 12px 8px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'flex-end' }}>
+                                <AddCustomButton t={task} />
                               </div>
                             )}
                           </>

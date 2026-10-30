@@ -367,7 +367,13 @@
   .event-variant { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 6px; padding: 8px 10px; }
   /* 準備物 */
   .event-prep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
-  .event-prep-item { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
+  .event-prep-item { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .event-prep-icons { display: flex; flex-wrap: wrap; gap: 4px; }
+  /* フロー図ノードの番号（タスク詳細カードの番号と対応） */
+  .event-flow-num { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  /* アイテム画像（報酬・準備物） */
+  .event-item-img { object-fit: contain; flex-shrink: 0; }
+  .event-reward-item { display: inline-flex; align-items: center; gap: 4px; }
 
   /* --- フェーズ12: keysタブ 鍵一覧 --- */
   /* 表示モード切替セグメント */

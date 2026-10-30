@@ -491,7 +491,10 @@
                 const saveDraft = () => {
                   const ts = Date.now();
                   const taskId = customTaskEditId || 'custom_' + ts;
+                  // フォームで編集しない項目（イベントタブから登録した報酬など）は編集前の値を引き継ぐ
+                  const prevTask = customTaskEditId ? customTasks.find(t => t.id === customTaskEditId) : null;
                   const newTask = {
+                    ...(prevTask?.finishRewards ? { finishRewards: prevTask.finishRewards, experience: prevTask.experience || 0 } : {}),
                     id: taskId,
                     name: draft.name.trim(),
                     trader: draft.traderName.trim() ? { name: draft.traderName.trim() } : null,
