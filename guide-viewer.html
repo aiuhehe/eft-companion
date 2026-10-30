@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EFT Gunsmith ガイド</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="guides-data.js"></script>
+<link rel="stylesheet" href="style.css">
+<script>
+// eft-tool.html と共通のテーマを即時適用（描画前に実行してフラッシュ防止）
+(function() {
+  const THEMES = [
+    { id:'tarkov',       vars:{'--bg-primary':'#0f1117','--bg-secondary':'#1a1f2e','--bg-tertiary':'#0a0d14','--border':'#2d3748','--border-light':'#1e2536','--text-primary':'#e2e8f0','--text-secondary':'#94a3b8','--text-dim':'#64748b','--accent':'#f6c90e','--accent-on':'#0f1117','--accent-muted':'#854d0e'}},
+    { id:'dark-orange',  vars:{'--bg-primary':'#0f0e17','--bg-secondary':'#1c1b2e','--bg-tertiary':'#090813','--border':'#2d2b3e','--border-light':'#1e1c30','--text-primary':'#fffffe','--text-secondary':'#a7a9be','--text-dim':'#6a6c82','--accent':'#ff8906','--accent-on':'#0f0e17','--accent-muted':'#8a4800'}},
+    { id:'warm-brown',   vars:{'--bg-primary':'#55423d','--bg-secondary':'#6b5550','--bg-tertiary':'#3d2e2a','--border':'#7a6560','--border-light':'#664f4a','--text-primary':'#fffffe','--text-secondary':'#fff3ec','--text-dim':'#c4a49a','--accent':'#e78fb3','--accent-on':'#271c19','--accent-muted':'#7a3a5a'}},
+    { id:'light-teal',   vars:{'--bg-primary':'#f8f5f2','--bg-secondary':'#ede8e3','--bg-tertiary':'#e4ddd6','--border':'#c8c0b8','--border-light':'#ddd8d2','--text-primary':'#232323','--text-secondary':'#555858','--text-dim':'#909090','--accent':'#078080','--accent-on':'#fffffe','--accent-muted':'#045050'}},
+  ];
+  try {
+    const _mode = localStorage.getItem('eft_active_mode') || 'pvp';
+    const saved = JSON.parse(localStorage.getItem('eft_tool_v2__' + _mode) || '{}');
+    const t = THEMES.find(x => x.id === saved.theme) || THEMES[0];
+    Object.entries(t.vars).forEach(([k, v]) => document.documentElement.style.setProperty(k, v));
+  } catch(e) {}
+})();
+</script>
+<style>
+  .guide-step { transition: opacity 0.15s; }
+  .guide-step.is-done { opacity: 0.45; }
+  .guide-step.is-done .step-title { text-decoration: line-through; }
+  .step-checkbox {
+    width: 20px; height: 20px; min-width: 20px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-secondary);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .step-checkbox.checked {
+    background: var(--state-ok);
+    border-color: var(--state-ok);
+  }
+  .trader-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 1px 7px; border-radius: 10px;
+    font-size: 11px; font-weight: 600;
+    white-space: nowrap;
+  }
+  .trader-Prapor     { background: rgba(220,50,50,0.18); color: #fca5a5; border: 1px solid rgba(220,50,50,0.35); }
+  .trader-Therapist  { background: rgba(100,180,100,0.18); color: #86efac; border: 1px solid rgba(100,180,100,0.35); }
+  .trader-Skier      { background: rgba(245,158,11,0.18); color: #fcd34d; border: 1px solid rgba(245,158,11,0.35); }
+  .trader-Peacekeeper{ background: rgba(59,130,246,0.18); color: #93c5fd; border: 1px solid rgba(59,130,246,0.35); }
+  .trader-Mechanic   { background: rgba(100,116,139,0.2); color: #cbd5e1; border: 1px solid rgba(100,116,139,0.4); }
+  .trader-Ragman     { background: rgba(139,92,246,0.18); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.35); }
+  .trader-Jaeger     { background: rgba(34,197,94,0.18); color: #86efac; border: 1px solid rgba(34,197,94,0.35); }
+  .trader-unknown    { background: rgba(100,100,100,0.2); color: var(--text-secondary); border: 1px solid var(--border); }
+  .guide-tab-btn {
+    padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--bg-secondary);
+    color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .guide-tab-btn.active {
+    background: var(--accent-muted); border-color: var(--accent);
+    color: var(--accent);
+  }
+  .progress-bar-track {
+    height: 6px; border-radius: 3px;
+    background: var(--bg-secondary); border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: var(--state-ok);
+    transition: width 0.3s ease;
+  }
+  .substep-list { list-style: none; padding: 0; margin: 0; }
+  .substep-list li {
+    display: flex; align-items: flex-start; gap: 6px;
+    color: var(--text-secondary); font-size: 12px; line-height: 1.5;
+    padding: 2px 0;
+  }
+  .substep-num {
+    min-width: 18px; height: 18px; border-radius: 50%;
+    background: var(--bg-primary); border: 1px solid var(--border);
+    font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim); margin-top: 1px;
+  }
+  .note-box {
+    background: var(--warn-bg-weak); border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 6px; padding: 6px 10px;
+    font-size: 12px; color: var(--warn-text);
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ================== ICONS (同 eft-tool.html) ==================
+const IP = {
+  target:         <><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="11"/></>,
+  check:          <><polyline points="5 12 10 17 20 7"/></>,
+  'circle-check': <><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2l4-4"/></>,
+  'alert-triangle':<><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636-2.87l-8.106-13.536a1.914 1.914 0 0 0-3.274 0z"/><path d="M12 16h.01"/></>,
+  tool:           <><path d="M7 10h3v-3l-3.5-3.5a6 6 0 0 1 8 8l6 6a2 2 0 0 1-3 3l-6-6a6 6 0 0 1-8-8l3.5 3.5"/></>,
+  refresh:        <><path d="M20 11a8.1 8.1 0 0 0-15.5-2m-.5-4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></>,
+  'chevron-down': <><polyline points="6 9 12 15 18 9"/></>,
+  'chevron-right':<><polyline points="9 6 15 12 9 18"/></>,
+  package:        <><polyline points="12 3 20 7.5 20 16.5 12 21 4 16.5 4 7.5 12 3"/><line x1="12" y1="12" x2="20" y2="7.5"/><line x1="12" y1="12" x2="12" y2="21"/><line x1="12" y1="12" x2="4" y2="7.5"/></>,
+};
+function Icon({ name, size=16, color='currentColor', strokeWidth=2, style={}, className='' }) {
+  const paths = IP[name];
+  if (!paths) return <span style={{fontSize:size*0.75}}>□</span>;
+  return (
+    <span className={`t-icon ${className}`} style={{width:size,height:size,...style}}>
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+        fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+        {paths}
+      </svg>
+    </span>
+  );
+}
+
+// ================== STORAGE ==================
+const STORAGE_KEY = 'eft_guides_v1';
+
+function loadChecks() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveChecks(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ================== TRADER BADGE ==================
+function TraderBadge({ name, ll }) {
+  const cls = `trader-badge trader-${name || 'unknown'}`;
+  return <span className={cls}>{name} LL{ll}</span>;
+}
+
+// ================== STEP CARD ==================
+function StepCard({ guideId, step, index, checked, onToggle }) {
+  const [open, setOpen] = useState(false);
+  const hasDetail = (step.substeps && step.substeps.length > 0) || (step.notes && step.notes.length > 0);
+
+  return (
+    <div className={`guide-step section${checked ? ' is-done' : ''}`} style={{ marginBottom: 8, padding: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px' }}>
+        {/* チェックボックス */}
+        <div
+          className={`step-checkbox${checked ? ' checked' : ''}`}
+          onClick={() => onToggle(step.id)}
+          title={checked ? '未完了に戻す' : '完了'}
+        >
+          {checked && <Icon name="check" size={13} color="#fff" strokeWidth={3} />}
+        </div>
+
+        {/* コンテンツ */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* ヘッダー行 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, minWidth: 52 }}>
+              STEP {index + 1}
+            </span>
+            <span className="step-title" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+              {step.title}
+            </span>
+          </div>
+
+          {/* アイテム名 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            <Icon name="package" size={12} color="var(--text-dim)" />
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{step.item}</span>
+          </div>
+
+          {/* トレーダーバッジ */}
+          {step.traders && step.traders.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+              {step.traders.map((t, i) => <TraderBadge key={i} name={t.name} ll={t.ll} />)}
+            </div>
+          )}
+
+          {/* サブステップ・ノート展開トグル */}
+          {hasDetail && (
+            <button
+              onClick={() => setOpen(v => !v)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                marginTop: 8, padding: '2px 6px', borderRadius: 4,
+                background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                color: 'var(--text-dim)', fontSize: 11, cursor: 'pointer'
+              }}
+            >
+              <Icon name={open ? 'chevron-down' : 'chevron-right'} size={11} />
+              {open ? '詳細を隠す' : '詳細を見る'}
+            </button>
+          )}
+
+          {/* 展開コンテンツ */}
+          {hasDetail && open && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {step.substeps && step.substeps.length > 0 && (
+                <div>
+                  {step.substeps_label && (
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5, fontWeight: 500 }}>
+                      {step.substeps_label}
+                    </div>
+                  )}
+                  <ul className="substep-list">
+                    {step.substeps.map((s, i) => (
+                      <li key={i}>
+                        <span className="substep-num">{i + 1}</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {step.notes && step.notes.map((n, i) => (
+                <div key={i} className="note-box">
+                  <Icon name="alert-triangle" size={13} color="var(--warn)" style={{ marginTop: 1, minWidth: 13 }} />
+                  <span>{n}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ================== GUIDE VIEW ==================
+function GuideView({ guide, checks, onToggle, onReset }) {
+  const total = guide.steps.length;
+  const done = guide.steps.filter(s => checks[s.id]).length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <div>
+      {/* ヘッダー */}
+      <div className="section" style={{ marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div className="section-title" style={{ marginBottom: 4 }}>
+              <Icon name="tool" size={14} color="var(--accent)" /> {guide.title}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+              {done} / {total} ステップ完了
+            </div>
+          </div>
+          <button
+            className="btn btn-gray btn-sm"
+            onClick={() => {
+              if (confirm('このガイドのチェックを全てリセットしますか？（ワイプ後などに）')) {
+                onReset(guide.id);
+              }
+            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+          >
+            <Icon name="refresh" size={12} /> チェックリセット
+          </button>
+        </div>
+
+        {/* プログレスバー */}
+        <div className="progress-bar-track" style={{ marginTop: 10 }}>
+          <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, textAlign: 'right' }}>
+          {pct}%
+        </div>
+      </div>
+
+      {/* ステップリスト */}
+      {guide.steps.map((step, i) => (
+        <StepCard
+          key={step.id}
+          guideId={guide.id}
+          step={step}
+          index={i}
+          checked={!!checks[step.id]}
+          onToggle={onToggle}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ================== APP ==================
+function App() {
+  const guides = typeof GUIDES !== 'undefined' ? GUIDES : [];
+
+  // URLハッシュでガイドを初期選択
+  const initialId = (() => {
+    const hash = location.hash.replace('#', '');
+    return guides.find(g => g.id === hash) ? hash : (guides[0] ? guides[0].id : null);
+  })();
+
+  const [activeId, setActiveId] = useState(initialId);
+  const [allChecks, setAllChecks] = useState(loadChecks);
+
+  // ハッシュ変更を反映
+  useEffect(() => {
+    const handler = () => {
+      const hash = location.hash.replace('#', '');
+      if (guides.find(g => g.id === hash)) setActiveId(hash);
+    };
+    window.addEventListener('hashchange', handler);
+    return () => window.removeEventListener('hashchange', handler);
+  }, [guides]);
+
+  const handleTabClick = (id) => {
+    setActiveId(id);
+    location.hash = id;
+  };
+
+  const handleToggle = useCallback((stepId) => {
+    setAllChecks(prev => {
+      const guideChecks = { ...(prev[activeId] || {}) };
+      guideChecks[stepId] = !guideChecks[stepId];
+      const next = { ...prev, [activeId]: guideChecks };
+      saveChecks(next);
+      return next;
+    });
+  }, [activeId]);
+
+  const handleReset = useCallback((guideId) => {
+    setAllChecks(prev => {
+      const next = { ...prev, [guideId]: {} };
+      saveChecks(next);
+      return next;
+    });
+  }, []);
+
+  const activeGuide = guides.find(g => g.id === activeId);
+  const activeChecks = allChecks[activeId] || {};
+
+  if (guides.length === 0) {
+    return (
+      <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)' }}>
+        guides-data.js が読み込まれていません。同じフォルダに置いてください。
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 680, margin: '0 auto', padding: '16px 12px' }}>
+      {/* アプリタイトル */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <Icon name="target" size={20} color="var(--accent)" />
+        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+          Gunsmith ガイド
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 4 }}>
+          チェックはブラウザに自動保存されます
+        </span>
+      </div>
+
+      {/* ガイド選択タブ */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+        {guides.map(g => {
+          const total = g.steps.length;
+          const done = Object.values(allChecks[g.id] || {}).filter(Boolean).length;
+          return (
+            <button
+              key={g.id}
+              className={`guide-tab-btn${activeId === g.id ? ' active' : ''}`}
+              onClick={() => handleTabClick(g.id)}
+            >
+              {g.id === 'gunsmith-1' ? 'PP-19 Vityaz' :
+               g.id === 'gunsmith-2' ? 'Glock 17' :
+               g.id === 'gunsmith-3' ? 'ORSIS T-5000M' : g.title}
+              <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.7 }}>
+                {done}/{total}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ガイド本体 */}
+      {activeGuide && (
+        <GuideView
+          guide={activeGuide}
+          checks={activeChecks}
+          onToggle={handleToggle}
+          onReset={handleReset}
+        />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

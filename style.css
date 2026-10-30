@@ -1,0 +1,443 @@
+  :root {
+    --bg-primary:#0f1117; --bg-secondary:#1a1f2e; --bg-tertiary:#0a0d14;
+    --border:#2d3748; --border-light:#1e2536;
+    --text-primary:#e2e8f0; --text-secondary:#94a3b8; --text-dim:#64748b;
+    --accent:#f6c90e; --accent-on:#0f1117; --accent-muted:#854d0e;
+
+    /* ===== 操作状態カラー（テーマ非依存・サイト全体で統一） =====
+       「この操作状態はこの色」をここで一元管理する。
+       例: ピン止めの赤味を変えたい → --state-pin-* を変えれば全タブに反映 */
+    /* ピン止め（マップピン・上部固定） */
+    --state-pin: #ef4444;
+    --state-pin-muted: #c08080;            /* ボタンアイコン・タスク名 */
+    --state-pin-bg: rgba(239,68,68,0.15);  /* ボタンON背景 */
+    --state-pin-bg-weak: rgba(239,68,68,0.06); /* カード背景 */
+    --state-pin-border: rgba(239,68,68,0.4);   /* カードボーダー */
+    /* 進行中 */
+    --state-progress: #f59e0b;
+    --state-progress-muted: #a08050;       /* ボタンアイコン */
+    --state-progress-name: #b8a070;        /* タスク名（ボタンよりやや明るい） */
+    --state-progress-bg: rgba(245,158,11,0.15);
+    --state-progress-bg-weak: rgba(245,158,11,0.06);
+    --state-progress-border: rgba(245,158,11,0.4);
+    /* 完了・充足・OK（緑系） */
+    --state-ok: #22c55e;
+    --state-ok-text: #86efac;
+    --state-ok-muted: #5a9a70;             /* 完了ボタンアイコン */
+    --state-ok-bg: rgba(34,197,94,0.18);   /* チップ・バッジ背景 */
+    --state-ok-bg-mid: rgba(34,197,94,0.15); /* ボタンON・チェック済背景 */
+    --state-ok-bg-weak: rgba(34,197,94,0.08); /* カード全体のうっすら背景 */
+    --state-ok-border-weak: rgba(34,197,94,0.4);
+    /* 未解放・不足（LLロック等） */
+    --state-locked: #ef4444;
+    --state-locked-bg: rgba(239,68,68,0.18);
+
+    /* ===== 意味カラー（テーマ非依存・操作では変わらない固定の意味色） ===== */
+    /* 危険・削除・エラー・ワイプ */
+    --danger: #ef4444;
+    --danger-text: #fca5a5;
+    --danger-pale: #fecaca;   /* 濃赤背景上の明るいテキスト */
+    --danger-strong: #991b1b; /* ワイプボタン背景 */
+    --danger-deep: #7f1d1d;   /* バッジ・WIPE帯の濃背景 */
+    --danger-bg: rgba(239,68,68,0.18);        /* バッジ背景 */
+    --danger-bg-mid: rgba(239,68,68,0.1);     /* アラートカード背景 */
+    --danger-bg-weak: rgba(239,68,68,0.08);   /* 行・セクションのうっすら背景 */
+    --danger-bg-faint: rgba(239,68,68,0.07);  /* ワイプ帯の極薄背景 */
+    --danger-border-weak: rgba(239,68,68,0.4);
+    --danger-border-strong: rgba(239,68,68,0.5);
+    /* 警告・注意・狙いリスト */
+    --warn: #f59e0b;
+    --warn-text: #fcd34d;
+    --warn-deep: #78350f;
+    --warn-bg: rgba(245,158,11,0.20);
+    --warn-bg-mid: rgba(245,158,11,0.18);   /* バッジ背景 */
+    --warn-bg-weak: rgba(245,158,11,0.08);  /* 行のうっすら背景 */
+    /* 情報・クラフト */
+    --info: #7dd3fc;
+    --info-deep: #1e3a5f;
+    --info-border: #2563eb;                 /* 前提タスクチップのボーダー */
+    --info-bg: rgba(125,209,252,0.15);
+    --info-bg-weak: rgba(125,209,252,0.10); /* タスクチップ背景 */
+    /* お気に入り（ハート） */
+    --fav: #f472b6;
+    --fav-text: #f9a8d4;
+    --fav-deep: #831843;
+    --fav-bg: rgba(236,72,153,0.20);
+    /* 手動登録 */
+    --manual: #a78bfa;
+    --manual-text: #c4b5fd;
+    --manual-bg: rgba(167,139,250,0.12);
+    --manual-border: rgba(167,139,250,0.30);
+    /* OK/完了の濃背景（解放バッジ等） */
+    --state-ok-deep: #14532d;
+    --state-ok-bg-soft: rgba(34,197,94,0.12);  /* Wikiボタン背景 */
+    --state-ok-bg-faint: rgba(34,197,94,0.10); /* タスクチップ背景 */
+  }
+  /* ── マップピン吹き出し ── */
+  .map-pin-bubble {
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    margin-bottom: 6px; background: var(--bg-secondary); border: 1px solid var(--state-pin);
+    border-radius: 6px; padding: 6px 10px; font-size: 12px; white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35); pointer-events: auto; z-index: 10;
+  }
+  .map-pin-bubble-task { color: var(--accent); font-weight: bold; margin-bottom: 2px; }
+  .map-pin-bubble-obj  { color: var(--text-primary); }
+
+  /* ── マップタブ ── */
+  .mapreg-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .mapreg-tab  { font-size: 12px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; }
+  .mapreg-tab.is-active     { border-color: var(--accent); background: var(--accent-muted); color: var(--text-primary); font-weight: bold; }
+  .mapreg-tab.is-registered { border-color: var(--state-ok); }
+  .mapreg-task-row { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+
+  body { background: var(--bg-primary); color: var(--text-primary); font-family: 'Segoe UI', sans-serif; }
+  .section { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .section-title { color: var(--accent); font-weight: bold; font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  input[type="number"], input[type="text"], select { background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary); padding: 4px 8px; border-radius: 4px; font-size: 13px; }
+  input[type="number"]:focus, input[type="text"]:focus, select:focus { outline: 1px solid var(--accent); }
+  .badge-urgent { background: var(--danger-deep); color: var(--danger-text); border: 1px solid var(--danger); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+  .badge-soon  { background: var(--warn-deep); color: var(--warn-text); border: 1px solid var(--warn); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+  .badge-ok    { background: var(--state-ok-deep); color: var(--state-ok-text); border: 1px solid var(--state-ok); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+  .alert-one   { background: #450a0a; border: 1px solid var(--danger); border-radius: 6px; padding: 8px 12px; }
+  .btn { padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-yellow { background: var(--accent); color: var(--accent-on); font-weight: bold; }
+  .btn-gray   { background: var(--border); color: var(--text-primary); }
+  .btn-sm { padding: 2px 8px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { background: var(--bg-primary); color: var(--text-secondary); padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); font-weight: normal; }
+  td { padding: 5px 8px; border-bottom: 1px solid var(--border-light); }
+  tr:hover td { background: var(--border-light); }
+  /* ===== モードバー ===== */
+  .mode-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; padding: 6px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; }
+  .mode-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-secondary); transition: all .15s; white-space: nowrap; }
+  .mode-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .mode-btn.active { border-color: var(--accent); background: var(--accent); color: var(--accent-on); cursor: default; }
+  .mode-btn-add { color: var(--text-dim); font-weight: normal; border-style: dashed; }
+  .mode-btn-add:hover { color: var(--accent); border-style: dashed; }
+
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 8px 8px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 9px; font-weight: 600; color: var(--text-secondary); transition: color .15s, background .15s; white-space: nowrap; min-width: 44px; max-width: 70px; overflow: hidden; }
+  .tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+  .tab.active { border-bottom-color: var(--accent); color: var(--accent); background: rgba(255,255,255,0.04); }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .spinner { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .progress-bar { background: var(--border); height: 6px; border-radius: 3px; overflow: hidden; }
+  .progress-fill { background: var(--accent); height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .progress-fill.green { background: var(--state-ok); }
+  .progress-fill.red   { background: var(--danger); }
+  .t-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .t-icon svg { display: block; }
+  .theme-swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color .15s, transform .1s; }
+  .theme-swatch:hover { transform: scale(1.15); }
+  .theme-swatch.active { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--bg-secondary); }
+
+  /* ===== 第2段階: インラインstyleから切り出したクラス ===== */
+  /* タスク検索タブのタスクカード（TaskRow 外枠）。
+     背景色・ボーダー色・完了時opacityは状態依存のためインラインに残す。 */
+  .task-card { position: relative; border-radius: 6px; margin-bottom: 4px; overflow: visible; }
+
+  /* --- フェーズ1: 共通カード（Barter/Craftカード・各タブで再利用） --- */
+  /* 背景色・ボーダー色は揃い具合で変わるためインラインに残す */
+  .barter-card, .craft-card { border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; }
+  /* 結果アイテムの40pxアイコン（img・プレースホルダdiv共用） */
+  .result-icon { width: 40px; height: 40px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-secondary); object-fit: contain; flex-shrink: 0; }
+  /* 必要素材チップ。充足状態は .is-ok モディファイアで切替 */
+  .req-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 7px; border-radius: 3px; white-space: nowrap; background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
+  .req-chip.is-ok { background: var(--state-ok-bg); color: var(--state-ok-text); border-color: var(--state-ok); }
+  .req-chip-icon { width: 18px; height: 18px; object-fit: contain; border-radius: 2px; }
+  /* カード内の操作ボタン共通枠。背景/文字色はボタン種別でインライン指定 */
+  .card-btn { padding: 3px 8px; border-radius: 3px; font-size: 12px; cursor: pointer; border: none; }
+  /* トレーダーLL / 施設Lv アクセスバッジ。到達可否は .is-ok / .is-locked で切替 */
+  .ll-badge { font-size: 11px; padding: 1px 6px; border-radius: 3px; }
+  .ll-badge.is-ok { color: var(--state-ok-text); background: var(--state-ok-bg); }
+  .ll-badge.is-locked { color: var(--state-locked); background: var(--state-locked-bg); }
+
+  /* --- フェーズ2: tasksタブ タスク検索 --- */
+  /* タスク行ヘッダの操作ボタン（ピン/進行中/完了）。ON状態は .is-pinned / .is-progress / .is-done で切替 */
+  .taskrow-btn { padding: 3px 4px; border-radius: 3px; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); color: var(--text-dim); }
+  /* 完了ボタンはツリーボタンと誤クリックしないよう左右余白を広げてクリック領域を拡大 */
+  .taskrow-complete { padding: 5px 12px; }
+  .taskrow-btn.is-pinned { background: var(--state-pin-bg); color: var(--state-pin-muted); }
+  .taskrow-btn.is-progress { background: var(--state-progress-bg); color: var(--state-progress-muted); }
+  .taskrow-btn.is-done { background: var(--state-ok-bg-mid); color: var(--state-ok-muted); }
+  /* タスク内容の持ち物チップ。充足状態は .is-ok で切替 */
+  .obj-chip { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 1px 6px; border-radius: 3px; background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
+  .obj-chip.is-ok { background: var(--state-ok-bg); color: var(--state-ok-text); border-color: var(--state-ok); }
+  /* タスク目的の行（全プロパティ固定） */
+  .obj-row { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border-radius: 4px; padding: 6px 10px; }
+  /* Wikiリンクボタン（日本語/翻訳/アプリ内）。背景/文字/ボーダーはインライン */
+  .wiki-btn { padding: 4px 10px; border-radius: 4px; font-size: 12px; text-decoration: none; cursor: pointer; }
+  /* タスクツリーの前提/解放チップ。色はインライン */
+  .task-chip { font-size: 12px; padding: 3px 9px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  /* 完了報酬バッジ。背景/文字/ボーダーはインライン */
+  .reward-badge { font-size: 12px; padding: 3px 8px; border-radius: 3px; }
+  /* 納品アイテム集計チップ。在庫充足= .is-stocked / チェック済= .is-checked で切替 */
+  .delivery-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 8px; border-radius: 4px; cursor: pointer; background: var(--bg-secondary); border: 1px solid var(--border); }
+  .delivery-chip.is-stocked { background: var(--state-ok-bg-weak); border-color: var(--state-ok-border-weak); }
+  .delivery-chip.is-checked { background: var(--state-ok-bg-mid); border-color: var(--state-ok); text-decoration: line-through; opacity: 0.6; }
+
+  /* ===== task-card 内部要素（詳細設計） ===== */
+  /* タグ */
+  /* タスクツリー（タブ作成）ボタンはヘッダーグリッド内の完了ボタン左セルに配置 */
+  .task-tree-btn-cell { display: flex; align-items: center; justify-content: center; }
+  .task-tag-btn { padding: 3px 4px; border-radius: 3px; cursor: pointer; border: none; background: transparent; display: flex; align-items: center; justify-content: center; }
+  /* ポップオーバーはカード基準で左寄せ・ヘッダー下に出す（ボタンが中央寄りでも画面外に溢れない） */
+  .task-tag-popover { position: absolute; top: 38px; left: 8px; z-index: 10; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 10px; width: 220px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .task-tag-popover-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; }
+  .task-tag-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; } /* 背景色・ボーダーはインライン */
+  /* ヘッダー行 */
+  .task-head { display: grid; align-items: center; gap: 6px; padding: 8px 10px; cursor: pointer; } /* grid-template-columns はインライン(COL) */
+  .task-cell { overflow: hidden; }
+  .task-cell-right { text-align: right; }
+  .task-name { font-weight: bold; font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* color はインライン */
+  .task-trader { color: var(--text-secondary); font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-muted { font-size: 11px; color: var(--text-dim); }
+  .task-muted-sm { font-size: 10px; color: var(--text-dim); }
+  .task-exp { font-size: 12px; color: #fcd34d; }
+  .task-standing { font-size: 11px; color: #86efac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 持ち物ストリップ */
+  .task-obj-strip { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 8px 72px; }
+  .obj-type-icon { font-size: 10px; } /* color はインライン */
+  .obj-img { width: 16px; height: 16px; object-fit: contain; }
+  .obj-fir { color: #f59e0b; font-size: 10px; }
+  /* 詳細展開 */
+  .task-detail { border-top: 1px solid var(--border); padding: 12px 16px 14px; } /* display はインライン */
+  .task-wiki-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .task-tree { margin-bottom: 14px; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border); padding: 10px 14px; }
+  .task-tree-title { color: var(--text-secondary); font-size: 11px; font-weight: bold; margin-bottom: 8px; }
+  .task-tree-node { padding: 5px 12px; border-radius: 6px; background: var(--accent-muted); border: 2px solid var(--accent); color: var(--accent); font-weight: bold; font-size: 13px; }
+  .task-tree-col { display: flex; flex-direction: column; gap: 4px; } /* prereq列は align-items:flex-end をインライン */
+  .tree-col-label { font-size: 10px; color: var(--text-dim); margin-bottom: 2px; }
+  .tree-arrow { color: var(--text-dim); font-size: 16px; }
+  /* ===== プロジェクトタブ（サブタブ）＆ 最上部スキルツリー ===== */
+  .task-subtab-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .task-subtab { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 5px 12px; border-radius: 6px 6px 0 0; cursor: pointer; background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-secondary); } /* active時のborder/colorはタブ色をインライン */
+  .task-subtab:hover { background: var(--bg-secondary); }
+  .task-subtab.active { background: var(--bg-secondary); border-color: var(--accent); color: var(--accent); font-weight: bold; }
+  .task-subtab-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; } /* 背景色はインライン */
+  .task-subtab-hint { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); margin-left: 4px; }
+  .task-tab-tree { margin-bottom: 14px; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; } /* border-colorはタブ色をインライン */
+  .task-tab-tree-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .task-tab-del { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; background: var(--border); color: var(--danger-text); border: none; }
+  .task-tab-del:hover { background: var(--danger-deep); }
+  .task-tab-tree-body { overflow-x: auto; padding-bottom: 4px; }
+  .ptree-node { display: inline-flex; align-items: center; gap: 6px; }
+  .ptree-prereqs { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .ptree-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; padding: 4px 9px; border-radius: 5px; cursor: pointer; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--text-primary); }
+  .ptree-chip:hover { border-color: var(--accent); }
+  .ptree-chip.is-done { opacity: 0.5; text-decoration: line-through; }
+  .ptree-chip.is-goal { font-weight: bold; background: var(--bg-primary); border-width: 2px; } /* border-color/colorはタブ色をインライン */
+  .task-detail-title { font-size: 12px; font-weight: bold; margin-bottom: 8px; } /* color はインライン */
+  .task-detail-list { display: flex; flex-direction: column; gap: 6px; }
+  .obj-row-icon { font-size: 14px; flex-shrink: 0; }
+  .obj-row-img { width: 28px; height: 28px; object-fit: contain; border-radius: 3px; background: var(--bg-primary); flex-shrink: 0; }
+  .obj-row-text { font-size: 13px; color: var(--text-primary); flex: 1; }
+  .reward-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .reward-img { width: 20px; height: 20px; object-fit: contain; }
+  /* アプリ内Wikiパネル */
+  .wiki-panel { margin-top: 10px; border: 1px solid var(--state-ok); border-radius: 8px; overflow: hidden; } /* display はインライン */
+  .wiki-panel-head { background: #0a1a0a; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; }
+  .wiki-panel-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 13px; }
+  .wiki-iframe { width: 100%; height: 600px; border: none; display: block; }
+
+  /* --- フェーズ3: itemsタブ アイテム一覧 --- */
+  /* 損益カード（TOP3・ピン止め比較）。ボーダー色は利益/損失でインライン */
+  .profit-card { background: var(--bg-primary); border-radius: 6px; padding: 10px 14px; min-width: 220px; flex: 1 1 220px; cursor: pointer; }
+  /* アイテムの32pxアイコン */
+  .item-icon-32 { width: 32px; height: 32px; object-fit: contain; background: var(--bg-secondary); border-radius: 3px; flex-shrink: 0; }
+  /* アイテム検索の結果行（全プロパティ固定） */
+  .item-row { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; display: flex; align-items: center; gap: 10px; }
+  /* フリマ価格履歴チャートの展開パネル（アイテム行直下） */
+  .flea-chart-panel { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin: 2px 0 6px; }
+  .flea-chart-msg { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); padding: 16px 4px; }
+  /* ウォッチボードのアイテムカード（常時チャート表示） */
+  .watch-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+  .watch-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  /* カテゴリ絞り込みボタン。ON時の背景/文字/太字はインライン */
+  .cat-btn { padding: 3px 9px; border-radius: 4px; font-size: 11px; cursor: pointer; border: none; }
+
+  /* --- フェーズ4: hideoutタブ ハイドアウト --- */
+  /* ハイドアウト収集アイテムカード。背景/ボーダー/opacityは状態でインライン */
+  .hideout-card { border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+  /* アイテムの28pxアイコン（施設テーブル内） */
+  .item-icon-28 { width: 28px; height: 28px; object-fit: contain; background: var(--bg-secondary); border-radius: 3px; flex-shrink: 0; }
+  /* 施設フィルタボタン。ON時の背景/文字/太字はインライン */
+  .station-filter-btn { padding: 3px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; }
+
+  /* --- フェーズ6: barterタブ 検索リスト（.req-chip/.ll-badge/.card-btn は再利用） --- */
+  /* 物々交換/クラフトの一覧行。背景/ボーダー色は状態でインライン */
+  .barter-list-row { border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  /* 結果アイテムの48pxアイコン（一覧行・img/プレースホルダ共用） */
+  .result-icon-48 { width: 48px; height: 48px; border-radius: 4px; border: 1px solid var(--border); object-fit: contain; background: var(--bg-secondary); flex-shrink: 0; }
+
+  /* --- フェーズ8: statusタブ 基本設定 --- */
+  .radio-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 13px; }
+  .setting-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  /* ハイドアウト現在レベルカード。ボーダー色は特典有無でインライン */
+  .hideout-level-card { background: var(--bg-primary); border-radius: 6px; padding: 8px 12px; min-width: 160px; }
+
+  /* --- フェーズ9: advisorタブ トレーダー解放 --- */
+  /* レベル/信頼度/取引額の ✅❌+数値セル */
+  .check-cell { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+  /* 優先度バッジ。背景/文字/ボーダーは badgeStyle でインライン */
+  .priority-badge { padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+
+  /* --- フェーズ5: journalタブ 活動ジャーナル --- */
+  /* 記録一覧のエントリカード。背景/ボーダー色は状態でインライン */
+  .journal-entry { border-radius: 8px; font-size: 12px; overflow: hidden; flex-shrink: 0; }
+  /* 記録項目の「移動」ボタン（btn btn-sm と併用） */
+  .move-btn { padding: 1px 5px; font-size: 10px; display: inline-flex; align-items: center; gap: 3px; color: var(--text-dim); background: transparent; border: 1px solid var(--border-light); }
+  /* 活動サマリーの統計ボックス（全プロパティ固定） */
+  .stat-box { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; flex: 1 1 120px; text-align: center; }
+
+  /* --- フェーズ7: ocrタブ スクリーンショット登録 --- */
+  /* 認識結果の行。背景/ボーダー色は認識可否でインライン */
+  .ocr-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; }
+  /* 補完候補ドロップダウン */
+  .ocr-dropdown { position: absolute; top: 100%; left: 0; z-index: 100; min-width: 280px; background: #1e2536; border: 1px solid #374151; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); margin-top: 2px; }
+  .ocr-dropdown-search { padding: 8px 10px; border-bottom: 1px solid #2d3748; }
+  .ocr-cand-list { max-height: 280px; overflow-y: auto; }
+  /* 候補行。現在選択の背景はインライン、hover色はJSで操作 */
+  .ocr-cand-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #1a2030; }
+  /* 候補トグルボタン。背景/文字色はインライン */
+  .cand-btn { font-size: 11px; padding: 1px 7px; border-radius: 3px; cursor: pointer; border: none; }
+  /* 候補行の20pxアイコン */
+  .cand-icon { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+
+  /* --- フェーズ10: promoタブ プロモコード --- */
+  /* マイコードカード。ボーダー色/opacityは使用済みでインライン */
+  .promo-card { display: flex; align-items: center; gap: 10px; background: var(--bg-primary); border-radius: 6px; padding: 7px 12px; }
+  /* SNS検索リンク（hover色はJSで操作） */
+  .sns-link { display: inline-block; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: var(--text-primary); text-decoration: none; transition: border-color 0.15s; }
+  /* Xフィード投稿カード（全プロパティ固定） */
+  .feed-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  /* フィード内のコード抽出チップ（全プロパティ固定） */
+  .code-chip { font-family: monospace; font-size: 12px; font-weight: bold; background: #1a2e1a; border: 1px solid var(--state-ok); color: var(--state-ok-text); border-radius: 4px; padding: 1px 8px; cursor: pointer; letter-spacing: 0.05em; }
+
+  /* --- フェーズ11: eventタブ イベント（Wild Wild Woods）解放バーターのフリマ変動 --- */
+  /* 解放バーター1件＝報酬アイテム1枚のカード */
+  .event-reward-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+  /* カードヘッダー（アイコン＋名前＋コストバッジ） */
+  .event-reward-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  /* Silver Badge コストバッジ */
+  .event-cost-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: bold; background: var(--warn-bg-weak); border: 1px solid var(--warn); color: var(--warn-text); border-radius: 5px; padding: 2px 8px; }
+  /* 「他の入手手段」開閉ヘッダー */
+  .event-alt-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-size: 12px; color: var(--text-secondary); padding: 6px 0 2px; border-top: 1px dashed var(--border); margin-top: 10px; }
+  /* 代替バーター1件 */
+  .event-alt-barter { background: var(--bg-primary); border: 1px solid var(--border-light); border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
+  /* 代替バーターの必要アイテムをグリッド配置 */
+  .event-req-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 10px; margin-top: 6px; }
+  /* 必要アイテム1個（ヘッダー＋7日チャート） */
+  .event-req-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .event-req-head { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 4px; }
+
+  /* --- フェーズ12: keysタブ 鍵一覧 --- */
+  /* 表示モード切替セグメント */
+  .key-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .key-seg-btn { background: var(--bg-secondary); color: var(--text-secondary); border: none; font-size: 13px; padding: 5px 12px; cursor: pointer; }
+  .key-seg-btn.active { background: var(--accent); color: var(--accent-on); font-weight: bold; }
+  /* 鍵リスト1行（背景/ボーダーは展開状態でインライン上書き） */
+  .key-row { display: flex; align-items: center; gap: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; }
+  /* 個別チャートのラッパ */
+  .key-chart-wrap { background: var(--bg-secondary); border: 1px solid var(--border); border-top: none; border-radius: 0 0 6px 6px; padding: 8px 10px; margin-top: -4px; }
+
+  /* --- プランタブ --- */
+  /* Section A: ゴールチップ */
+  .plan-goal-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-secondary); padding: 4px 8px 4px 10px; font-size: 12px; color: var(--text-primary); }
+  .plan-goal-chip.is-done { opacity: 0.5; }
+  .plan-goal-label { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plan-chip-del { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; border: none; background: none; cursor: pointer; color: var(--text-dim); padding: 0; }
+  .plan-chip-del:hover { color: var(--danger-text); background: var(--danger-bg-faint); }
+  /* Section B: マップタブ */
+  .plan-map-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .plan-map-tab { font-size: 12px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .plan-map-tab:hover { border-color: var(--accent); color: var(--text-primary); }
+  .plan-map-tab.is-active { border-color: var(--accent); background: var(--accent-muted); color: var(--text-primary); font-weight: bold; }
+  .plan-tab-cnt { font-size: 11px; background: var(--bg-primary); border-radius: 8px; padding: 0 5px; color: var(--text-dim); }
+  /* タスクグループ */
+  .plan-group { border: 1px solid var(--border-light); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; background: var(--bg-primary); }
+  .plan-group-head { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+  /* タスク行 */
+  .plan-task-row { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-secondary); margin-bottom: 4px; }
+  .plan-task-row:last-child { margin-bottom: 0; }
+  .plan-task-row.is-locked { opacity: 0.5; border-style: dashed; }
+  .plan-task-row.is-tree-child { margin-left: 14px; }
+  .plan-tree-prefix { font-size: 12px; color: var(--text-dim); flex-shrink: 0; font-family: monospace; line-height: 1; }
+  .plan-task-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .plan-task-name { font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 60px; }
+  .plan-task-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .plan-go-btn { display: inline-flex; align-items: center; gap: 3px; }
+  .plan-done-btn { display: inline-flex; align-items: center; gap: 3px; border-color: var(--state-ok); color: var(--state-ok-text); }
+  .plan-done-btn:hover { background: var(--state-ok-bg-weak); }
+  /* バッジ類 */
+  .plan-badge { font-size: 10px; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+  .plan-badge-trader { background: var(--warn-bg-weak); color: var(--warn-text); border: 1px solid var(--warn); }
+  .plan-badge-exp { background: var(--info-bg-weak); color: var(--info); border: 1px solid var(--info-border); }
+  .plan-badge-any { background: var(--bg-primary); color: var(--text-dim); border: 1px solid var(--border); font-style: italic; }
+  .plan-badge-multi { background: var(--accent-muted); color: var(--accent); border: 1px solid var(--accent); font-weight: bold; }
+  /* Section E: アイテム合算グリッド */
+  .plan-items-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .plan-item-card { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; background: var(--bg-primary); }
+  .plan-item-card-top { display: flex; align-items: center; gap: 5px; }
+  .plan-item-card-name { font-size: 12px; font-weight: 500; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plan-item-card-remain { font-size: 12px; font-weight: bold; flex-shrink: 0; }
+  .plan-fir-badge { font-size: 10px; background: var(--warn-bg-mid); color: var(--warn-text); border: 1px solid var(--warn); border-radius: 3px; padding: 0 4px; font-weight: bold; }
+  .plan-item-breakdown { font-size: 10px; color: var(--text-dim); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plan-pm-btn { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+  .plan-pm-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .plan-stock-num { font-size: 12px; min-width: 36px; text-align: center; color: var(--text-primary); }
+  .plan-stock-input { width: 62px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); padding: 2px 6px; text-align: right; }
+  .item-icon-16 { width: 16px; height: 16px; object-fit: contain; background: var(--bg-secondary); border-radius: 2px; flex-shrink: 0; }
+  /* Section F: ゴール詳細ツリー */
+  .plan-goal-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .plan-goal-card-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-secondary); cursor: pointer; user-select: none; }
+  .plan-goal-card-head:hover { background: var(--bg-primary); }
+  .plan-goal-card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plan-goal-card-body { padding: 10px 14px; background: var(--bg-primary); border-top: 1px solid var(--border); }
+  /* ゴール詳細のタスクツリー（ProjectTree 流用）*/
+  .plan-goal-card-body .ptree-node { margin-bottom: 6px; }
+  .plan-goal-card-body .ptree-prereqs { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .plan-goal-card-body .ptree-chip { background: var(--info-bg-weak); border-color: var(--info-border); color: var(--info); }
+  .plan-goal-card-body .ptree-chip:hover { border-color: var(--info); background: var(--info-bg); }
+  .plan-goal-card-body .ptree-chip.is-done { opacity: 0.5; text-decoration: line-through; }
+  /* 追加ボタン（プランに追加・is-plan で accent 色） */
+  .taskrow-btn.is-plan svg { color: var(--accent); }
+
+/* ── マップ: ピンの詳細位置画像 ── */
+.pin-img-paste-zone {
+  margin-top: 4px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 3px 6px; border-radius: 3px; border: 1px dashed var(--border);
+  background: var(--bg-secondary); font-size: 10px; color: var(--text-dim); cursor: text; outline: none;
+}
+.pin-img-paste-zone:focus { border-color: var(--accent); color: var(--text-secondary); }
+.pin-img-viewer {
+  position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.8);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 24px; cursor: zoom-out;
+}
+.pin-img-viewer img { max-width: 100%; max-height: calc(100% - 32px); object-fit: contain; border-radius: 4px; }
+.pin-img-viewer-name { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-primary); }
+
+/* マップタブ：マップ画像差し替えリンク（控えめ表示） */
+.map-image-replace {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.map-image-replace-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.map-image-replace-link:hover { color: var(--text-secondary); }

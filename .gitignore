@@ -1,0 +1,23 @@
+# ビルド出力（GitHub Actions で生成する）
+eft-tool.html
+dist/
+
+# バックアップ・ローカル設定
+backups/
+.claude/
+
+# マップ画像（作者 REƎMR 氏の許可が得られるまで同梱しない。ローカルの maps/ はそのまま使える）
+maps/
+
+# 開発用の作業ファイル
+tarkov_ammo_raw.json
+ammo_boxes.json
+process_ammo.py
+api-explorer.html
+アイコン一覧.html
+マップ機能_実装依頼.md
+
+# 個人の開発メモ（計画・Issue案・未実装の指示書。公開しない）
+docs/Discord出撃共有Bot_計画書.md
+docs/Issue案_制限中タブのJSON-API対応.md
+docs/pvp-season対応_調査まとめと実装指示書.md

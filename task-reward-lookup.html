@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EFT タスク報酬逆引き</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #1a1d27;
+    --bg3: #252836;
+    --border: #333648;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --accent: #f59e0b;
+    --accent-dim: rgba(245,158,11,0.15);
+    --ok: #22c55e;
+    --ok-dim: rgba(34,197,94,0.15);
+    --info: #7dd3fc;
+    --info-dim: rgba(125,211,252,0.12);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.15);
+    --danger: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  #header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  #header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  #status { font-size: 12px; color: var(--text2); }
+
+  .hdr-right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 8px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  button {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ===== SEARCH BAR ===== */
+  #search-bar {
+    padding: 14px 20px 10px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 49px;
+    z-index: 90;
+  }
+
+  .search-wrap {
+    position: relative;
+    max-width: 600px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text2);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  #search-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 8px 36px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #search-input:focus { border-color: var(--accent); }
+
+  #clear-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    display: none;
+  }
+  #clear-btn:hover { color: var(--text); }
+
+  .search-hint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  /* ===== FILTERS ===== */
+  #filter-bar {
+    padding: 8px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-label { font-size: 11px; color: var(--text2); margin-right: 2px; }
+
+  .filter-chip {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    background: var(--bg3);
+    color: var(--text2);
+    white-space: nowrap;
+    transition: all 0.1s;
+  }
+  .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-chip.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+
+  /* ===== MAIN ===== */
+  #main {
+    display: flex;
+    height: calc(100vh - 148px);
+  }
+
+  /* ===== ITEM LIST (left) ===== */
+  #item-list {
+    width: 260px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .item-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(51,54,72,0.4);
+    transition: background 0.1s;
+  }
+  .item-entry:hover { background: var(--bg3); }
+  .item-entry.selected { background: var(--bg3); border-left: 3px solid var(--accent); }
+  .item-entry.selected .item-entry-name { color: var(--accent); }
+
+  .item-icon {
+    width: 32px; height: 32px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: var(--bg2);
+    flex-shrink: 0;
+  }
+
+  .item-icon-placeholder {
+    width: 32px; height: 32px;
+    border-radius: 4px;
+    background: var(--bg2);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text2);
+    font-size: 10px;
+  }
+
+  .item-entry-info { flex: 1; min-width: 0; }
+  .item-entry-name { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-entry-count {
+    font-size: 10px;
+    color: var(--text2);
+    background: var(--bg2);
+    border-radius: 10px;
+    padding: 1px 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .item-list-empty {
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text2);
+    font-size: 12px;
+  }
+
+  /* ===== DETAIL PANEL (right) ===== */
+  #detail-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+
+  .detail-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60%;
+    gap: 10px;
+    color: var(--text2);
+    font-size: 13px;
+  }
+
+  .detail-empty-icon { font-size: 40px; opacity: 0.3; }
+
+  /* item header */
+  .detail-item-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .detail-item-icon {
+    width: 56px; height: 56px;
+    object-fit: contain;
+    background: var(--bg2);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .detail-item-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .detail-item-sub {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* task card */
+  .task-cards { display: flex; flex-direction: column; gap: 10px; }
+
+  .task-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .task-card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg3);
+  }
+
+  .trader-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .task-card-name {
+    font-weight: 600;
+    font-size: 13px;
+    flex: 1;
+  }
+
+  .task-card-name a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .task-card-name a:hover { color: var(--accent); text-decoration: underline; }
+
+  .trader-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .level-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--bg2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .task-card-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+
+  /* reward sections */
+  .reward-section { display: flex; flex-direction: column; gap: 4px; }
+  .reward-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text2);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .reward-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    background: var(--bg);
+  }
+
+  .reward-row.highlight-item {
+    background: var(--accent-dim);
+    border: 1px solid rgba(245,158,11,0.25);
+  }
+
+  .reward-icon {
+    width: 28px; height: 28px;
+    object-fit: contain;
+    background: var(--bg2);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .reward-name { color: var(--text); flex: 1; }
+  .reward-count { font-size: 11px; color: var(--text2); white-space: nowrap; }
+
+  /* standing / xp / skill pills */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 5px; }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .pill-xp    { background: var(--accent-dim); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .pill-pos   { background: var(--ok-dim);     color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+  .pill-neg   { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .pill-skill { background: var(--purple-dim); color: #c4b5fd; border: 1px solid rgba(167,139,250,0.3); }
+  .pill-unlock{ background: var(--info-dim);   color: var(--info); border: 1px solid rgba(125,211,252,0.25); }
+
+  /* prereqs */
+  .prereq-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .prereq-chip {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+
+  /* ===== TASK TREE ===== */
+  .tree-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tree-toggle-btn:hover { border-color: var(--info); color: var(--info); }
+  .tree-toggle-btn.open { border-color: var(--info); color: var(--info); background: var(--info-dim); }
+
+  .task-tree-block {
+    margin-top: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    overflow-x: auto;
+  }
+
+  .ptree-node {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: nowrap;
+  }
+
+  .ptree-prereqs {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+  }
+
+  .tree-arrow {
+    color: var(--text2);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .ptree-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    white-space: nowrap;
+    cursor: default;
+    flex-shrink: 0;
+  }
+
+  .ptree-chip.is-goal {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+    font-weight: 600;
+  }
+
+  .ptree-chip-trader {
+    font-size: 9px;
+    color: var(--text2);
+    opacity: 0.7;
+    margin-right: 2px;
+  }
+
+  .ptree-chip.is-goal .ptree-chip-trader { opacity: 0.8; }
+
+  /* ===== PLAN BUTTON ===== */
+  .plan-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .plan-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .plan-btn.in-plan { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); cursor: default; }
+
+  /* ===== LOADING ===== */
+  #loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 14px;
+    color: var(--text2);
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== SCROLL STYLE ===== */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #555; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>EFT タスク報酬 逆引き</h1>
+  <span id="status">読み込み中...</span>
+  <div class="hdr-right">
+    <select id="game-mode" onchange="reload()">
+      <option value="regular">通常</option>
+      <option value="pve">PvE</option>
+    </select>
+    <select id="lang" onchange="reload()">
+      <option value="ja">日本語</option>
+      <option value="en">English</option>
+    </select>
+    <button onclick="reload()">再読み込み</button>
+  </div>
+</div>
+
+<div id="search-bar">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="アイテム名で検索（例: GPU、Keycard、ADAR）" oninput="onSearch()" autocomplete="off">
+    <button id="clear-btn" onclick="clearSearch()">✕</button>
+  </div>
+  <div class="search-hint" id="search-hint">読み込み完了後に検索できます</div>
+</div>
+
+<div id="filter-bar" style="display:none">
+  <span class="filter-label">フィルタ:</span>
+  <span class="filter-chip active" data-filter="all"     onclick="setFilter('all',this)">すべて</span>
+  <span class="filter-chip"        data-filter="item"   onclick="setFilter('item',this)">アイテム報酬</span>
+  <span class="filter-chip"        data-filter="unlock" onclick="setFilter('unlock',this)">購入解放</span>
+  <span class="filter-chip"        data-filter="craft"  onclick="setFilter('craft',this)">クラフト解放</span>
+  <span class="filter-label" style="margin-left:8px">トレーダー:</span>
+  <span class="filter-chip active" data-trader="all"   onclick="setTrader('all',this)">全員</span>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>tarkov.dev API からデータ取得中...</div>
+</div>
+
+<div id="main" style="display:none">
+  <div id="item-list">
+    <div class="item-list-empty" id="list-empty">アイテムを検索してください</div>
+  </div>
+  <div id="detail-panel">
+    <div class="detail-empty" id="detail-empty">
+      <div class="detail-empty-icon">🎁</div>
+      <div>左のリストからアイテムを選択してください</div>
+    </div>
+    <div id="detail-content" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const GRAPHQL_URL = 'https://api.tarkov.dev/graphql';
+const PLAN_BASE_KEY = 'eft_plan_v1';
+
+// ── JSON API フォールバック ──────────────────────────────────────
+const JSON_API_BASE = 'https://json.tarkov.dev';
+const TRADER_NAMES_BY_ID = {
+  '54cb50c76803fa8b248b4571': 'Prapor',
+  '54cb57776803fa99248b456e': 'Therapist',
+  '579dc571d53a0658a154fbec': 'Fence',
+  '58330581ace78e27b8b10cee': 'Skier',
+  '5935c25fb3acc3127c3d8cd9': 'Peacekeeper',
+  '5a7c2eca46aef81a7ca2145d': 'Mechanic',
+  '5ac3b934156ae10c4430e83c': 'Ragman',
+  '5c0647fdd443bc2504c2d371': 'Jaeger',
+  '6617beeaa9cfa777ca915b7c': 'Ref',
+};
+let _fallbackActive = false;
+
+const _jCache = {};
+async function _jFetch(url) {
+  if (!_jCache[url]) {
+    _jCache[url] = fetch(url)
+      .then(r => { if (!r.ok) throw new Error(`JSON API ${r.status}`); return r.json(); })
+      .catch(e => { delete _jCache[url]; throw e; });
+  }
+  return _jCache[url];
+}
+
+function _jSlug(s) {
+  return s ? s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
+}
+
+function _jApplyLocale(obj, loc) {
+  if (Array.isArray(obj)) return obj.map(x => _jApplyLocale(x, loc));
+  if (obj && typeof obj === 'object') {
+    const r = {};
+    for (const [k, v] of Object.entries(obj)) r[k] = _jApplyLocale(v, loc);
+    return r;
+  }
+  if (typeof obj === 'string' && Object.prototype.hasOwnProperty.call(loc, obj)) return loc[obj];
+  return obj;
+}
+
+async function _jFetchTranslated(jMode, path, lang) {
+  const base = `${JSON_API_BASE}/${jMode}/${path}`;
+  const [main, loc] = await Promise.all([
+    _jFetch(base),
+    _jFetch(`${base}_${lang}`).then(r => r.data ?? {}).catch(() => ({})),
+  ]);
+  return _jApplyLocale(main.data, loc);
+}
+
+function _jItemRef(itemId, itemsMap) {
+  const item = itemsMap[itemId];
+  if (!item) return { id: itemId, name: '', iconLink: '' };
+  const isKey = s => s && /^[0-9a-f]{24} /.test(s);
+  return {
+    id: item.id,
+    name: isKey(item.name) ? _jSlug(item.normalizedName) : (item.name || ''),
+    iconLink: item.iconLink || '',
+  };
+}
+
+async function fetchTasksFallback(gameMode, lang) {
+  const jMode = gameMode === 'pve' ? 'pve' : 'regular';
+  const [tasksData, itemsData, craftsRaw, hideoutData] = await Promise.all([
+    _jFetchTranslated(jMode, 'tasks', lang),
+    _jFetchTranslated(jMode, 'items', lang),
+    _jFetch(`${JSON_API_BASE}/${jMode}/crafts`).then(r => r.data).catch(() => ({})),
+    _jFetchTranslated(jMode, 'hideout', lang).catch(() => ({})),
+  ]);
+
+  const itemsMap = itemsData?.items ?? {};
+  const craftsMap = {};
+  Object.values(craftsRaw || {}).forEach(c => { if (c?.id) craftsMap[c.id] = c; });
+  const stationsMap = {};
+  Object.values(hideoutData || {}).forEach(s => { if (s?.id) stationsMap[s.id] = s; });
+
+  const tasksArr = Object.values(tasksData?.tasks ?? {});
+  const taskNameMap = {};
+  tasksArr.forEach(t => { taskNameMap[t.id] = t.name || ''; });
+
+  return tasksArr.map(task => {
+    const fw = task.finishRewards || {};
+    const craftUnlock = (fw.craftUnlock || []).map(cId => {
+      const c = craftsMap[cId];
+      if (!c) return null;
+      const st = stationsMap[c.station] || {};
+      return {
+        station: { name: st.name || _jSlug(st.normalizedName) || c.station },
+        level: c.level || 1,
+        duration: c.duration || 0,
+        rewardItems: c.productItem
+          ? [{ item: _jItemRef(c.productItem.item, itemsMap), count: c.productItem.count || 1 }]
+          : [],
+        requiredItems: (c.requiredItems || []).map(ri => ({
+          item: _jItemRef(ri.item, itemsMap),
+          count: ri.count || 1,
+        })),
+      };
+    }).filter(Boolean);
+
+    return {
+      id: task.id,
+      name: task.name || '',
+      wikiLink: task.wikiLink || '',
+      trader: { id: task.trader, name: TRADER_NAMES_BY_ID[task.trader] || task.trader },
+      minPlayerLevel: task.minPlayerLevel || 0,
+      taskRequirements: (task.taskRequirements || []).map(r => ({
+        task: { id: r.task, name: taskNameMap[r.task] || '' },
+        status: r.status || [],
+      })),
+      experience: task.experience || 0,
+      finishRewards: {
+        traderStanding: (fw.traderStanding || []).map(s => ({
+          trader: { name: TRADER_NAMES_BY_ID[s.trader] || s.trader },
+          standing: s.standing || 0,
+        })),
+        items: (fw.items || []).map(ri => ({
+          item: _jItemRef(ri.item, itemsMap),
+          count: ri.count || 1,
+        })),
+        offerUnlock: (fw.offerUnlock || []).map(o => ({
+          trader: { name: TRADER_NAMES_BY_ID[o.trader] || o.trader },
+          level: o.level || 1,
+          item: _jItemRef(o.item, itemsMap),
+        })),
+        craftUnlock,
+        skillLevelReward: (fw.skillLevelReward || []).map(s => ({
+          name: s.skill || s.name || '',
+          level: s.level || 1,
+        })),
+      },
+    };
+  });
+}
+
+function getActivePlanKey() {
+  const mode = localStorage.getItem('eft_active_mode') || 'pvp';
+  return PLAN_BASE_KEY + '__' + mode;
+}
+
+function getPlanIds() {
+  try { return (JSON.parse(localStorage.getItem(getActivePlanKey())) || []).map(p => p.id); } catch { return []; }
+}
+
+function addToPlan(taskId, btnEl) {
+  const planId = 'plan_task_' + taskId;
+  const planKey = getActivePlanKey();
+  try {
+    const items = JSON.parse(localStorage.getItem(planKey)) || [];
+    if (items.some(p => p.id === planId)) return;
+    items.push({ id: planId, type: 'task', taskId, addedAt: new Date().toISOString() });
+    localStorage.setItem(planKey, JSON.stringify(items));
+  } catch(e) { console.error(e); return; }
+  btnEl.classList.add('in-plan');
+  btnEl.innerHTML = '&#10003; 追加済み';
+  btnEl.onclick = null;
+}
+
+const TRADER_COLORS = {
+  'Prapor':      '#ef4444',
+  'Therapist':   '#22c55e',
+  'Fence':       '#94a3b8',
+  'Skier':       '#3b82f6',
+  'Peacekeeper': '#8b5cf6',
+  'Mechanic':    '#f59e0b',
+  'Ragman':      '#ec4899',
+  'Jaeger':      '#10b981',
+  'Ref':         '#06b6d4',
+};
+
+let allTasks = [];
+// itemId -> { item, entries: [{task, count, type:'item'|'unlock'}] }
+let rewardIndex = {};
+let allItemsSorted = []; // [{id, name, iconLink, entries}]
+
+// taskId起点で全前提タスクIDを再帰収集（自分自身含む）
+function getAncestorTaskIds(taskId, visited = new Set()) {
+  if (visited.has(taskId)) return visited;
+  visited.add(taskId);
+  const task = allTasks.find(t => t.id === taskId);
+  (task?.taskRequirements || []).forEach(req => getAncestorTaskIds(req.task.id, visited));
+  return visited;
+}
+
+// 再帰的にツリーHTMLを生成（左→右：前提→ゴール）
+function buildTaskTreeHtml(taskId, seen = new Set(), goalId) {
+  const t = allTasks.find(x => x.id === taskId);
+  if (!t) return '';
+  const dup = seen.has(taskId);
+  const nextSeen = new Set(seen);
+  nextSeen.add(taskId);
+  const prereqs = dup ? [] : (t.taskRequirements || []);
+  const isGoal = taskId === goalId;
+  const traderColor = TRADER_COLORS[t.trader?.name] || '#888';
+
+  const chipClass = 'ptree-chip' + (isGoal ? ' is-goal' : '');
+  const chipStyle = isGoal ? `border-color:var(--accent);color:var(--accent);background:var(--accent-dim)` : '';
+  const chip = `<span class="${chipClass}" style="${chipStyle}" title="${t.trader?.name || ''} - ${t.name}">
+    <span class="ptree-chip-trader">${t.trader?.name || ''}</span>${t.name}
+  </span>`;
+
+  if (prereqs.length === 0) {
+    return `<div class="ptree-node">${chip}</div>`;
+  }
+  const prereqsHtml = prereqs.map(req => buildTaskTreeHtml(req.task.id, nextSeen, goalId)).join('');
+  return `<div class="ptree-node">
+    <div class="ptree-prereqs">${prereqsHtml}</div>
+    <span class="tree-arrow">→</span>
+    ${chip}
+  </div>`;
+}
+
+function toggleTree(taskId, btn) {
+  const block = document.getElementById('tree-' + taskId);
+  if (!block) return;
+  const isOpen = block.style.display !== 'none';
+  block.style.display = isOpen ? 'none' : 'block';
+  btn.classList.toggle('open', !isOpen);
+  btn.textContent = isOpen ? '前提ツリーを表示' : '前提ツリーを隠す';
+}
+
+let currentFilter = 'all';
+let currentTrader = 'all';
+let selectedItemId = null;
+let searchQuery = '';
+
+async function fetchTasks() {
+  const gameMode = document.getElementById('game-mode').value;
+  const lang = document.getElementById('lang').value;
+  _fallbackActive = false;
+
+  const query = `{
+    tasks(gameMode: ${gameMode}, lang: ${lang}) {
+      id name wikiLink
+      trader { id name }
+      minPlayerLevel
+      taskRequirements { task { id name } status }
+      experience
+      finishRewards {
+        traderStanding { trader { name } standing }
+        items { item { id name iconLink } count }
+        offerUnlock { trader { name } level item { id name iconLink } }
+        craftUnlock {
+          station { name }
+          level
+          duration
+          rewardItems { item { id name iconLink } count }
+          requiredItems { item { id name iconLink } count }
+        }
+        skillLevelReward { name level }
+      }
+    }
+  }`;
+
+  let graphqlErr;
+  try {
+    const res = await fetch(GRAPHQL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.errors) throw new Error(data.errors[0].message);
+    if (!data.data?.tasks) throw new Error('no data');
+    return data.data.tasks;
+  } catch(e) {
+    graphqlErr = e;
+  }
+
+  console.warn('[EFT] GraphQL failed, using JSON API fallback:', graphqlErr.message);
+  _fallbackActive = true;
+  try {
+    return await fetchTasksFallback(gameMode, lang);
+  } catch(fallbackErr) {
+    throw new Error(`GraphQL: ${graphqlErr.message} / JSON API: ${fallbackErr.message}`);
+  }
+}
+
+async function reload() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('main').style.display = 'none';
+  document.getElementById('filter-bar').style.display = 'none';
+  document.getElementById('status').textContent = '読み込み中...';
+  document.getElementById('search-hint').textContent = '読み込み完了後に検索できます';
+
+  try {
+    allTasks = await fetchTasks();
+    buildIndex();
+    buildTraderFilters();
+    renderItemList('');
+    document.getElementById('status').textContent = `${allTasks.length} タスク / ${allItemsSorted.length} 種類のアイテム報酬` + (_fallbackActive ? ' [JSON API]' : '');
+    document.getElementById('search-hint').textContent = `${allItemsSorted.length} 種類のアイテムを検索できます`;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main').style.display = 'flex';
+    document.getElementById('filter-bar').style.display = 'flex';
+  } catch(e) {
+    document.getElementById('status').textContent = 'エラー: ' + e.message;
+    document.getElementById('loading').innerHTML = `<div style="color:var(--danger)">取得失敗: ${e.message}</div>`;
+  }
+}
+
+function loadManualUnlocksForLookup() {
+  const MANUAL_UNLOCKS_BASE_KEY = 'eft_manual_unlocks_v1';
+  const mode = localStorage.getItem('eft_active_mode') || 'pvp';
+  if (mode.startsWith('season_')) {
+    const seasonData = localStorage.getItem(MANUAL_UNLOCKS_BASE_KEY + '__' + mode);
+    if (seasonData !== null) {
+      try { return JSON.parse(seasonData) || []; } catch {}
+    }
+  }
+  try { return JSON.parse(localStorage.getItem(MANUAL_UNLOCKS_BASE_KEY)) || []; } catch { return []; }
+}
+
+function buildIndex() {
+  rewardIndex = {};
+
+  allTasks.forEach(task => {
+    const r = task.finishRewards || {};
+
+    // 通常アイテム報酬
+    (r.items || []).forEach(({ item, count }) => {
+      if (!item) return;
+      if (!rewardIndex[item.id]) rewardIndex[item.id] = { item, entries: [] };
+      rewardIndex[item.id].entries.push({ task, count, type: 'item' });
+    });
+
+    // 購入解放（トレーダーLL解放）
+    (r.offerUnlock || []).forEach(({ trader, level, item }) => {
+      if (!item) return;
+      if (!rewardIndex[item.id]) rewardIndex[item.id] = { item, entries: [] };
+      rewardIndex[item.id].entries.push({ task, type: 'unlock', unlockTrader: trader.name, unlockLevel: level });
+    });
+
+    // クラフト解放
+    (r.craftUnlock || []).forEach((craft) => {
+      (craft.rewardItems || []).forEach(({ item }) => {
+        if (!item) return;
+        if (!rewardIndex[item.id]) rewardIndex[item.id] = { item, entries: [] };
+        rewardIndex[item.id].entries.push({ task, type: 'craft', craft });
+      });
+    });
+  });
+
+  // 手動登録データをマージ
+  loadManualUnlocksForLookup().forEach(u => {
+    const task = allTasks.find(t => t.id === u.taskId) || {
+      id: u.taskId, name: u.taskName, wikiLink: '',
+      trader: { name: '（手動登録）' },
+      minPlayerLevel: 0, taskRequirements: [], experience: 0,
+      finishRewards: { traderStanding: [], items: [], offerUnlock: [] },
+    };
+    const item = { id: u.itemId, name: u.itemName, iconLink: u.itemIconLink || '' };
+    if (!rewardIndex[u.itemId]) rewardIndex[u.itemId] = { item, entries: [] };
+    if (u.type === 'unlock') {
+      rewardIndex[u.itemId].entries.push({ task, type: 'unlock', unlockTrader: u.trader, unlockLevel: u.traderLevel, manual: true, note: u.note });
+    } else {
+      rewardIndex[u.itemId].entries.push({ task, type: 'craft', manual: true, note: u.note, craft: { station: { name: u.station }, level: u.stationLevel, duration: 0, requiredItems: [], rewardItems: [{ item }] } });
+    }
+  });
+
+  allItemsSorted = Object.values(rewardIndex).sort((a, b) => a.item.name.localeCompare(b.item.name, 'ja'));
+}
+
+function buildTraderFilters() {
+  const filterBar = document.getElementById('filter-bar');
+  // 既存のトレーダーチップを削除
+  filterBar.querySelectorAll('[data-trader]:not([data-trader="all"])').forEach(e => e.remove());
+
+  const traders = [...new Set(allTasks.map(t => t.trader?.name).filter(Boolean))].sort();
+  const allChip = filterBar.querySelector('[data-trader="all"]');
+
+  traders.forEach(name => {
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip';
+    chip.dataset.trader = name;
+    chip.style.setProperty('--tc', TRADER_COLORS[name] || '#888');
+    chip.textContent = name;
+    chip.onclick = function() { setTrader(name, this); };
+    filterBar.appendChild(chip);
+  });
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('[data-filter]').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  renderItemList(searchQuery);
+  if (selectedItemId) renderDetail(selectedItemId);
+}
+
+function setTrader(t, el) {
+  currentTrader = t;
+  document.querySelectorAll('[data-trader]').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  renderItemList(searchQuery);
+  if (selectedItemId) renderDetail(selectedItemId);
+}
+
+function onSearch() {
+  searchQuery = document.getElementById('search-input').value.trim();
+  document.getElementById('clear-btn').style.display = searchQuery ? 'block' : 'none';
+  renderItemList(searchQuery);
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  searchQuery = '';
+  document.getElementById('clear-btn').style.display = 'none';
+  renderItemList('');
+}
+
+function filterEntries(entries) {
+  return entries.filter(e => {
+    if (currentFilter === 'item'   && e.type !== 'item')   return false;
+    if (currentFilter === 'unlock' && e.type !== 'unlock') return false;
+    if (currentFilter === 'craft'  && e.type !== 'craft')  return false;
+    if (currentTrader !== 'all' && !e.manual && e.task.trader?.name !== currentTrader) return false;
+    return true;
+  });
+}
+
+function renderItemList(q) {
+  const container = document.getElementById('item-list');
+
+  const lower = q.toLowerCase();
+  let items = allItemsSorted.filter(({ item, entries }) => {
+    if (lower && !item.name.toLowerCase().includes(lower)) return false;
+    return filterEntries(entries).length > 0;
+  });
+
+  container.innerHTML = '';
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="item-list-empty">${q ? `「${q}」に一致するアイテムなし` : 'アイテムなし'}</div>`;
+    return;
+  }
+
+  items.forEach(({ item, entries }) => {
+    const count = filterEntries(entries).length;
+    const div = document.createElement('div');
+    div.className = 'item-entry' + (item.id === selectedItemId ? ' selected' : '');
+    div.onclick = () => selectItem(item.id);
+
+    const iconHtml = item.iconLink
+      ? `<img class="item-icon" src="${item.iconLink}" alt="" loading="lazy">`
+      : `<div class="item-icon-placeholder">?</div>`;
+
+    // 検索ハイライト
+    let nameHtml = item.name;
+    if (lower) {
+      const idx = item.name.toLowerCase().indexOf(lower);
+      if (idx >= 0) {
+        nameHtml = item.name.slice(0, idx)
+          + `<mark style="background:var(--accent-dim);color:var(--accent);border-radius:2px">${item.name.slice(idx, idx + lower.length)}</mark>`
+          + item.name.slice(idx + lower.length);
+      }
+    }
+
+    div.innerHTML = `
+      ${iconHtml}
+      <div class="item-entry-info">
+        <div class="item-entry-name">${nameHtml}</div>
+      </div>
+      <span class="item-entry-count">${count} タスク</span>
+    `;
+    container.appendChild(div);
+  });
+
+  // 選択中アイテムが消えたらクリア
+  if (selectedItemId && !items.find(i => i.item.id === selectedItemId)) {
+    selectedItemId = null;
+    document.getElementById('detail-empty').style.display = 'flex';
+    document.getElementById('detail-content').style.display = 'none';
+  }
+}
+
+function selectItem(id) {
+  selectedItemId = id;
+  document.querySelectorAll('.item-entry').forEach(el => el.classList.remove('selected'));
+  const el = document.querySelector(`.item-entry[onclick*="${id}"]`);
+  if (el) el.classList.add('selected');
+  // re-render list to apply selection style
+  renderItemList(searchQuery);
+  renderDetail(id);
+}
+
+function renderDetail(id) {
+  const { item, entries } = rewardIndex[id] || {};
+  if (!item) return;
+
+  const filtered = filterEntries(entries);
+
+  document.getElementById('detail-empty').style.display = 'none';
+  const content = document.getElementById('detail-content');
+  content.style.display = 'block';
+
+  const iconHtml = item.iconLink
+    ? `<img class="detail-item-icon" src="${item.iconLink}" alt="">`
+    : `<div style="width:56px;height:56px;background:var(--bg2);border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:11px">?</div>`;
+
+  let html = `
+    <div class="detail-item-header">
+      ${iconHtml}
+      <div>
+        <div class="detail-item-name">${item.name}</div>
+        <div class="detail-item-sub">${filtered.length} タスクで報酬として入手可能</div>
+      </div>
+    </div>
+    <div class="task-cards">
+  `;
+
+  // タスクをトレーダー順・レベル順でソート
+  const sorted = [...filtered].sort((a, b) => {
+    const tn = (a.task.trader?.name || '').localeCompare(b.task.trader?.name || '');
+    if (tn !== 0) return tn;
+    return (a.task.minPlayerLevel || 0) - (b.task.minPlayerLevel || 0);
+  });
+
+  const planIds = getPlanIds();
+  sorted.forEach((entry) => {
+    const { task, count, type, unlockTrader, unlockLevel } = entry;
+    const traderName = task.trader?.name || '?';
+    const traderColor = TRADER_COLORS[traderName] || '#888';
+    const r = task.finishRewards || {};
+    const prereqs = task.taskRequirements || [];
+    const exp = task.experience || 0;
+    const standings = r.traderStanding || [];
+    const skills = r.skillLevelReward || [];
+    const allItems = r.items || [];
+    const unlocks = r.offerUnlock || [];
+    const planId = 'plan_task_' + task.id;
+    const inPlan = planIds.includes(planId);
+
+    html += `
+      <div class="task-card">
+        <div class="task-card-header">
+          <span class="trader-dot" style="background:${traderColor}"></span>
+          <span class="trader-badge" style="background:${traderColor}25;color:${traderColor}">${traderName}</span>
+          <span class="task-card-name">${task.wikiLink ? `<a href="${task.wikiLink}" target="_blank">${task.name}</a>` : task.name}</span>
+          ${task.minPlayerLevel ? `<span class="level-badge">Lv${task.minPlayerLevel}+</span>` : ''}
+          <span class="pill ${type === 'craft' ? 'pill-skill' : type === 'unlock' ? 'pill-unlock' : 'pill-xp'}" style="font-size:10px">${type === 'craft' ? 'クラフト解放' : type === 'unlock' ? '購入解放' : '報酬アイテム'}</span>
+          ${entry.manual ? '<span class="pill" style="background:var(--purple-dim);color:var(--purple);border:1px solid var(--purple);font-size:10px">手動</span>' : ''}
+          <button class="plan-btn${inPlan ? ' in-plan' : ''}" ${inPlan ? '' : `onclick="addToPlan('${task.id}', this)"`}>${inPlan ? '&#10003; 追加済み' : '+ プランに追加'}</button>
+        </div>
+        <div class="task-card-body">
+    `;
+
+    // ★ このアイテムのハイライト表示
+    if (type === 'item') {
+      html += `
+        <div class="reward-section">
+          <div class="reward-section-label">このタスクでの入手</div>
+          <div class="reward-row highlight-item">
+            ${item.iconLink ? `<img class="reward-icon" src="${item.iconLink}" alt="">` : ''}
+            <span class="reward-name">${item.name}</span>
+            ${count > 1 ? `<span class="reward-count">× ${count}</span>` : ''}
+          </div>
+        </div>
+      `;
+    } else if (type === 'unlock') {
+      html += `
+        <div class="reward-section">
+          <div class="reward-section-label">${entry.manual ? '手動登録: 購入解放' : '解放される購入バーター'}</div>
+          <div class="reward-row highlight-item">
+            ${item.iconLink ? `<img class="reward-icon" src="${item.iconLink}" alt="">` : ''}
+            <span class="reward-name">${item.name}</span>
+            <span class="reward-count">${unlockTrader} LL${unlockLevel}</span>
+          </div>
+          ${entry.manual ? `
+          <div style="margin-top:6px;padding:5px 8px;border-radius:4px;background:var(--purple-dim);border:1px solid var(--purple);font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px">
+            <span style="color:var(--purple);font-weight:600">手動</span> APIに載っていないため手動登録されたデータです${entry.note ? ` — ${entry.note}` : ''}
+          </div>` : ''}
+        </div>
+      `;
+    } else if (type === 'craft') {
+      const c = entry.craft;
+      const mins = Math.floor(c.duration / 60);
+      const timeStr = mins >= 60 ? `${Math.floor(mins/60)}h${mins%60 ? mins%60+'m' : ''}` : `${mins}m`;
+      html += `
+        <div class="reward-section">
+          <div class="reward-section-label">解放されるクラフト — ${c.station?.name || '?'} Lv${c.level} (${timeStr})</div>
+          <div class="reward-row highlight-item">
+            ${item.iconLink ? `<img class="reward-icon" src="${item.iconLink}" alt="">` : ''}
+            <span class="reward-name">${item.name}</span>
+          </div>
+      `;
+      if (c.requiredItems?.length) {
+        html += `<div style="margin-top:5px;font-size:11px;color:var(--text2)">素材:</div>`;
+        c.requiredItems.forEach(ri => {
+          html += `<div class="reward-row" style="margin-top:2px">
+            ${ri.item?.iconLink ? `<img class="reward-icon" src="${ri.item.iconLink}" alt="">` : ''}
+            <span class="reward-name" style="color:var(--text2)">${ri.item?.name || '?'}</span>
+            ${ri.count > 1 ? `<span class="reward-count">× ${ri.count}</span>` : ''}
+          </div>`;
+        });
+      }
+      html += `</div>`;
+    }
+
+    // XP・信頼度・スキルまとめ
+    const pills = [];
+    if (exp > 0) pills.push(`<span class="pill pill-xp">+${exp.toLocaleString()} XP</span>`);
+    standings.forEach(s => {
+      const pos = s.standing >= 0;
+      pills.push(`<span class="pill ${pos ? 'pill-pos' : 'pill-neg'}">${s.trader.name} ${pos ? '+' : ''}${s.standing}</span>`);
+    });
+    skills.forEach(s => {
+      pills.push(`<span class="pill pill-skill">${s.name} Lv${s.level}</span>`);
+    });
+
+    if (pills.length > 0) {
+      html += `<div class="reward-section"><div class="reward-section-label">その他の報酬</div><div class="pill-row">${pills.join('')}</div></div>`;
+    }
+
+    // 他の報酬アイテム（自分以外）
+    const otherItems = allItems.filter(i => i.item?.id !== id);
+    if (otherItems.length > 0) {
+      html += `<div class="reward-section"><div class="reward-section-label">一緒にもらえるアイテム</div>`;
+      otherItems.forEach(({ item: oi, count: oc }) => {
+        html += `<div class="reward-row">
+          ${oi.iconLink ? `<img class="reward-icon" src="${oi.iconLink}" alt="">` : ''}
+          <span class="reward-name">${oi.name}</span>
+          ${oc > 1 ? `<span class="reward-count">× ${oc}</span>` : ''}
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    // 前提タスクツリー
+    const ancestorCount = getAncestorTaskIds(task.id).size;
+    if (ancestorCount > 1) {
+      // 自分自身だけなら前提なし
+      const treeHtml = buildTaskTreeHtml(task.id, new Set(), task.id);
+      html += `
+        <div class="reward-section">
+          <div class="reward-section-label">前提タスク</div>
+          <button class="tree-toggle-btn" onclick="toggleTree('${task.id}', this)">前提ツリーを表示</button>
+          <div class="task-tree-block" id="tree-${task.id}" style="display:none;margin-top:8px">
+            ${treeHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    html += `</div></div>`;
+  });
+
+  html += `</div>`;
+  content.innerHTML = html;
+}
+
+reload();
+
+// eft-tool.html でモードが切り替わったら自動リロード
+window.addEventListener('storage', e => {
+  if (e.key === 'eft_active_mode') window.location.reload();
+});
+</script>
+</body>
+</html>

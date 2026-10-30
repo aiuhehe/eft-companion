@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EFT タスク全体ツリー</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #1a1d27;
+    --bg3: #252836;
+    --border: #333648;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --accent: #f59e0b;
+    --ok: #22c55e;
+    --danger: #ef4444;
+
+    --prapor: #ef4444;
+    --therapist: #22c55e;
+    --fence: #94a3b8;
+    --skier: #3b82f6;
+    --peacekeeper: #8b5cf6;
+    --mechanic: #f59e0b;
+    --ragman: #ec4899;
+    --jaeger: #10b981;
+    --ref: #06b6d4;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+  }
+
+  #header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  #header h1 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  #status {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  input[type="text"] {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 8px;
+    font-size: 12px;
+    width: 200px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+
+  select {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 8px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  button {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.active { border-color: var(--accent); background: rgba(245,158,11,0.15); color: var(--accent); }
+
+  #main {
+    display: flex;
+    height: calc(100vh - 49px);
+  }
+
+  /* ========== SIDEBAR ========== */
+  #sidebar {
+    width: 180px;
+    flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .trader-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 14px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .trader-btn:hover { background: var(--bg3); color: var(--text); }
+  .trader-btn.active { background: var(--bg3); color: var(--text); font-weight: 600; }
+  .trader-btn:hover { border-color: transparent; }
+
+  .trader-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .trader-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text2);
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 1px 5px;
+  }
+
+  /* ========== CONTENT ========== */
+  #content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+  }
+
+  /* ========== TREE ========== */
+  .tree-root {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .tree-node {
+    position: relative;
+  }
+
+  .node-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+    border: 1px solid transparent;
+  }
+  .node-row:hover { background: var(--bg3); }
+  .node-row.highlight { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); }
+
+  .toggle-btn {
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: var(--text2);
+    font-size: 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg2);
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .toggle-placeholder { width: 16px; flex-shrink: 0; }
+
+  .task-name {
+    flex: 1;
+    line-height: 1.3;
+  }
+
+  .task-name a {
+    color: var(--text);
+    text-decoration: none;
+  }
+  .task-name a:hover { color: var(--accent); text-decoration: underline; }
+
+  .task-level {
+    font-size: 10px;
+    color: var(--text2);
+    white-space: nowrap;
+    background: var(--bg3);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+
+  .trader-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .depth-line {
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+    opacity: 0.5;
+  }
+
+  .children-container {
+    padding-left: 24px;
+    position: relative;
+  }
+
+  .connector {
+    position: absolute;
+    left: 7px;
+    top: 0;
+    width: 8px;
+    height: 14px;
+    border-left: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* ========== BADGE FILTER CHIPS ========== */
+  .bftoggle {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text2);
+    letter-spacing: 0.02em;
+    user-select: none;
+    transition: all 0.1s;
+  }
+  .bftoggle.active {
+    border-color: var(--bc);
+    background: var(--bg);
+    color: var(--col);
+  }
+  .bftoggle:not(.active) {
+    opacity: 0.4;
+    text-decoration: line-through;
+  }
+
+  /* ========== REWARD BADGES ========== */
+  .reward-badges {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .rbadge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+    opacity: 0.85;
+  }
+
+  .rbadge-item    { background: rgba(245,158,11,0.18); color: #fcd34d; border: 1px solid rgba(245,158,11,0.35); }
+  .rbadge-unlock  { background: rgba(125,211,252,0.15); color: #7dd3fc; border: 1px solid rgba(125,211,252,0.3); }
+  .rbadge-craft   { background: rgba(167,139,250,0.18); color: #c4b5fd; border: 1px solid rgba(167,139,250,0.35); }
+  .rbadge-xp      { background: rgba(34,197,94,0.15);  color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+  .rbadge-skill   { background: rgba(236,72,153,0.15); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.3); }
+
+  /* ========== STATS BAR ========== */
+  #stats-bar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 6px 16px;
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    color: var(--text2);
+    flex-wrap: wrap;
+  }
+
+  .stat-item strong { color: var(--text); }
+
+  /* ========== LOADING ========== */
+  #loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    gap: 16px;
+    color: var(--text2);
+  }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ========== LEGEND ========== */
+  #legend {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 6px 16px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text2);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ========== TOOLTIP ========== */
+  #tooltip {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+    max-width: 320px;
+    min-width: 200px;
+    background: #1e2230;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .tip-title {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 13px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+  }
+
+  .tip-section {
+    margin-top: 6px;
+  }
+
+  .tip-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text2);
+    margin-bottom: 3px;
+    font-weight: 600;
+  }
+
+  .tip-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+  }
+
+  .tip-icon {
+    width: 22px; height: 22px;
+    object-fit: contain;
+    border-radius: 3px;
+    flex-shrink: 0;
+    background: var(--bg3);
+  }
+
+  .tip-standing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(34,197,94,0.15);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    color: #86efac;
+    margin: 2px 3px 2px 0;
+  }
+
+  .tip-standing.neg {
+    background: rgba(239,68,68,0.15);
+    border-color: rgba(239,68,68,0.3);
+    color: #fca5a5;
+  }
+
+  .tip-exp {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(245,158,11,0.15);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    color: #fcd34d;
+  }
+
+  .tip-unlock {
+    font-size: 11px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .tip-unlock img {
+    width: 20px; height: 20px;
+    object-fit: contain;
+    background: var(--bg3);
+    border-radius: 3px;
+  }
+
+  /* ========== LEVEL FILTER ========== */
+  .level-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  .level-filter input[type="number"] {
+    width: 46px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 3px 6px;
+    font-size: 12px;
+    outline: none;
+    text-align: center;
+  }
+  .level-filter input[type="number"]:focus { border-color: var(--accent); }
+
+  /* ========== PLAN BUTTON ========== */
+  .plan-btn {
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 11px;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.1s, border-color 0.1s, color 0.1s;
+  }
+  .node-row:hover .plan-btn { opacity: 1; }
+  .plan-btn:hover { border-color: var(--accent); color: var(--accent) !important; }
+  .plan-btn.added { opacity: 1; color: var(--ok) !important; border-color: var(--ok); }
+
+  /* ========== PLAN POPOVER ========== */
+  #plan-popover {
+    position: fixed;
+    z-index: 9998;
+    background: #1e2230;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    padding: 14px;
+    width: 240px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #plan-popover .pop-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  #plan-popover .pop-task-name {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+    word-break: break-all;
+  }
+
+  #plan-popover input[type="text"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 12px;
+    outline: none;
+  }
+  #plan-popover input[type="text"]:focus { border-color: var(--accent); }
+
+  .color-swatches {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  .color-swatch {
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.1s;
+  }
+  .color-swatch.selected { border-color: #fff; }
+
+  .pop-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .pop-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text2);
+  }
+  .pop-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pop-btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 700;
+  }
+  .pop-btn.primary:hover { background: #d97706; border-color: #d97706; color: #000; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>EFT タスク全体ツリー</h1>
+  <span id="status">読み込み中...</span>
+  <div class="controls">
+    <input type="text" id="search" placeholder="タスク名で検索..." oninput="onSearch()">
+    <select id="game-mode" onchange="reload()">
+      <option value="regular">通常</option>
+      <option value="pve">PvE</option>
+    </select>
+    <select id="lang" onchange="reload()">
+      <option value="ja">日本語</option>
+      <option value="en">English</option>
+    </select>
+    <button onclick="expandAll()">全展開</button>
+    <button onclick="collapseAll()">全折りたたみ</button>
+    <button onclick="reload()">再読み込み</button>
+  </div>
+</div>
+
+<div id="legend" style="display:none">
+  <span style="color:var(--text2); font-size:11px; margin-right:4px;">トレーダー:</span>
+</div>
+
+<div id="stats-bar" style="display:none">
+  <span class="stat-item">総タスク数: <strong id="s-total">-</strong></span>
+  <span class="stat-item">ルートタスク: <strong id="s-roots">-</strong></span>
+  <span class="stat-item">最大深度: <strong id="s-depth">-</strong></span>
+  <span class="stat-item">表示中: <strong id="s-visible">-</strong></span>
+</div>
+
+<div id="level-filter-bar" style="display:none;padding:6px 16px;background:var(--bg2);border-bottom:1px solid var(--border);align-items:center;gap:12px;flex-wrap:wrap">
+  <div class="level-filter">
+    <span>受注レベル:</span>
+    <input type="number" id="lv-min" min="1" max="79" placeholder="1"  oninput="onLevelFilter()" style="width:46px">
+    <span>〜</span>
+    <input type="number" id="lv-max" min="1" max="79" placeholder="79" oninput="onLevelFilter()" style="width:46px">
+    <button onclick="resetLevelFilter()" style="font-size:11px;padding:2px 7px">リセット</button>
+    <span id="lv-match" style="font-size:11px;color:var(--text2)"></span>
+  </div>
+</div>
+
+<div id="badge-filter-bar" style="display:none;padding:6px 16px;background:var(--bg2);border-bottom:1px solid var(--border);align-items:center;gap:6px;flex-wrap:wrap">
+  <span style="font-size:11px;color:var(--text2);margin-right:2px">バッジ表示:</span>
+  <span class="bftoggle active" data-badge="ITEM"  onclick="toggleBadgeFilter('ITEM',this)"  style="--bc:rgba(245,158,11,0.35);--bg:rgba(245,158,11,0.18);--col:#fcd34d">ITEM</span>
+  <span class="bftoggle active" data-badge="購入"  onclick="toggleBadgeFilter('購入',this)"  style="--bc:rgba(125,211,252,0.3);--bg:rgba(125,211,252,0.15);--col:#7dd3fc">購入</span>
+  <span class="bftoggle active" data-badge="製造"  onclick="toggleBadgeFilter('製造',this)"  style="--bc:rgba(167,139,250,0.35);--bg:rgba(167,139,250,0.18);--col:#c4b5fd">製造</span>
+  <span class="bftoggle active" data-badge="XP"    onclick="toggleBadgeFilter('XP',this)"    style="--bc:rgba(34,197,94,0.3);--bg:rgba(34,197,94,0.15);--col:#86efac">XP</span>
+  <span class="bftoggle active" data-badge="SKL"   onclick="toggleBadgeFilter('SKL',this)"   style="--bc:rgba(236,72,153,0.3);--bg:rgba(236,72,153,0.15);--col:#f9a8d4">SKL</span>
+</div>
+
+<div id="plan-popover">
+  <div class="pop-title">プランに追加</div>
+  <div class="pop-task-name" id="pop-task-name"></div>
+  <input type="text" id="pop-tab-name" placeholder="タブ名（省略可）">
+  <div class="color-swatches" id="pop-colors"></div>
+  <div class="pop-actions">
+    <button class="pop-btn" onclick="closePlanPop()">キャンセル</button>
+    <button class="pop-btn primary" onclick="confirmAddPlan()">追加</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="main">
+  <div id="sidebar">
+    <div class="trader-btn active" data-trader="all" onclick="selectTrader('all',this)">
+      <span class="trader-dot" style="background:var(--text2)"></span>
+      <span>全トレーダー</span>
+      <span class="trader-count" id="count-all">-</span>
+    </div>
+  </div>
+  <div id="content">
+    <div id="loading">
+      <div class="spinner"></div>
+      <div>tarkov.dev API からタスクデータを取得中...</div>
+    </div>
+    <div id="tree-container" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const GRAPHQL_URL = 'https://api.tarkov.dev/graphql';
+
+// ── JSON API フォールバック ──────────────────────────────────────
+const JSON_API_BASE = 'https://json.tarkov.dev';
+const TRADER_NAMES_BY_ID = {
+  '54cb50c76803fa8b248b4571': 'Prapor',
+  '54cb57776803fa99248b456e': 'Therapist',
+  '579dc571d53a0658a154fbec': 'Fence',
+  '58330581ace78e27b8b10cee': 'Skier',
+  '5935c25fb3acc3127c3d8cd9': 'Peacekeeper',
+  '5a7c2eca46aef81a7ca2145d': 'Mechanic',
+  '5ac3b934156ae10c4430e83c': 'Ragman',
+  '5c0647fdd443bc2504c2d371': 'Jaeger',
+  '6617beeaa9cfa777ca915b7c': 'Ref',
+};
+let _fallbackActive = false;
+
+const _jCache = {};
+async function _jFetch(url) {
+  if (!_jCache[url]) {
+    _jCache[url] = fetch(url)
+      .then(r => { if (!r.ok) throw new Error(`JSON API ${r.status}`); return r.json(); })
+      .catch(e => { delete _jCache[url]; throw e; });
+  }
+  return _jCache[url];
+}
+
+function _jSlug(s) {
+  return s ? s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
+}
+
+function _jApplyLocale(obj, loc) {
+  if (Array.isArray(obj)) return obj.map(x => _jApplyLocale(x, loc));
+  if (obj && typeof obj === 'object') {
+    const r = {};
+    for (const [k, v] of Object.entries(obj)) r[k] = _jApplyLocale(v, loc);
+    return r;
+  }
+  if (typeof obj === 'string' && Object.prototype.hasOwnProperty.call(loc, obj)) return loc[obj];
+  return obj;
+}
+
+async function _jFetchTranslated(jMode, path, lang) {
+  const base = `${JSON_API_BASE}/${jMode}/${path}`;
+  const [main, loc] = await Promise.all([
+    _jFetch(base),
+    _jFetch(`${base}_${lang}`).then(r => r.data ?? {}).catch(() => ({})),
+  ]);
+  return _jApplyLocale(main.data, loc);
+}
+
+function _jItemRef(itemId, itemsMap) {
+  const item = itemsMap[itemId];
+  if (!item) return { id: itemId, name: '', iconLink: '' };
+  const isKey = s => s && /^[0-9a-f]{24} /.test(s);
+  return {
+    id: item.id,
+    name: isKey(item.name) ? _jSlug(item.normalizedName) : (item.name || ''),
+    iconLink: item.iconLink || '',
+  };
+}
+
+async function fetchTasksFallback(gameMode, lang) {
+  const jMode = gameMode === 'pve' ? 'pve' : 'regular';
+  const [tasksData, itemsData, craftsRaw, hideoutData] = await Promise.all([
+    _jFetchTranslated(jMode, 'tasks', lang),
+    _jFetchTranslated(jMode, 'items', lang),
+    _jFetch(`${JSON_API_BASE}/${jMode}/crafts`).then(r => r.data).catch(() => ({})),
+    _jFetchTranslated(jMode, 'hideout', lang).catch(() => ({})),
+  ]);
+
+  const itemsMap = itemsData?.items ?? {};
+  const craftsMap = {};
+  Object.values(craftsRaw || {}).forEach(c => { if (c?.id) craftsMap[c.id] = c; });
+  const stationsMap = {};
+  Object.values(hideoutData || {}).forEach(s => { if (s?.id) stationsMap[s.id] = s; });
+
+  const tasksArr = Object.values(tasksData?.tasks ?? {});
+  const taskNameMap = {};
+  tasksArr.forEach(t => { taskNameMap[t.id] = t.name || ''; });
+
+  return tasksArr.map(task => {
+    const fw = task.finishRewards || {};
+    const craftUnlock = (fw.craftUnlock || []).map(cId => {
+      const c = craftsMap[cId];
+      if (!c) return null;
+      const st = stationsMap[c.station] || {};
+      return {
+        station: { name: st.name || _jSlug(st.normalizedName) || c.station },
+        level: c.level || 1,
+        duration: c.duration || 0,
+        rewardItems: c.productItem
+          ? [{ item: _jItemRef(c.productItem.item, itemsMap), count: c.productItem.count || 1 }]
+          : [],
+        requiredItems: (c.requiredItems || []).map(ri => ({
+          item: _jItemRef(ri.item, itemsMap),
+          count: ri.count || 1,
+        })),
+      };
+    }).filter(Boolean);
+
+    return {
+      id: task.id,
+      name: task.name || '',
+      wikiLink: task.wikiLink || '',
+      trader: { id: task.trader, name: TRADER_NAMES_BY_ID[task.trader] || task.trader },
+      minPlayerLevel: task.minPlayerLevel || 0,
+      taskRequirements: (task.taskRequirements || []).map(r => ({
+        task: { id: r.task, name: taskNameMap[r.task] || '' },
+        status: r.status || [],
+      })),
+      experience: task.experience || 0,
+      finishRewards: {
+        traderStanding: (fw.traderStanding || []).map(s => ({
+          trader: { name: TRADER_NAMES_BY_ID[s.trader] || s.trader },
+          standing: s.standing || 0,
+        })),
+        items: (fw.items || []).map(ri => ({
+          item: _jItemRef(ri.item, itemsMap),
+          count: ri.count || 1,
+        })),
+        offerUnlock: (fw.offerUnlock || []).map(o => ({
+          trader: { name: TRADER_NAMES_BY_ID[o.trader] || o.trader },
+          level: o.level || 1,
+          item: _jItemRef(o.item, itemsMap),
+        })),
+        craftUnlock,
+        skillLevelReward: (fw.skillLevelReward || []).map(s => ({
+          name: s.skill || s.name || '',
+          level: s.level || 1,
+        })),
+      },
+    };
+  });
+}
+
+const TRADER_COLORS = {
+  'Prapor':      '#ef4444',
+  'Therapist':   '#22c55e',
+  'Fence':       '#94a3b8',
+  'Skier':       '#3b82f6',
+  'Peacekeeper': '#8b5cf6',
+  'Mechanic':    '#f59e0b',
+  'Ragman':      '#ec4899',
+  'Jaeger':      '#10b981',
+  'Ref':         '#06b6d4',
+};
+
+let allTasks = [];
+let taskMap = {};        // id -> task
+let childrenMap = {};    // id -> [childTask, ...]
+let rootTasks = [];
+let selectedTrader = 'all';
+let searchQuery = '';
+let expandedSet = new Set(); // 開いているノードのid
+let matchedIds = new Set();  // 検索マッチしたid
+
+async function fetchTasks() {
+  const gameMode = document.getElementById('game-mode').value;
+  const lang = document.getElementById('lang').value;
+  _fallbackActive = false;
+
+  const query = `{
+    tasks(gameMode: ${gameMode}, lang: ${lang}) {
+      id name wikiLink
+      trader { id name }
+      minPlayerLevel
+      taskRequirements { task { id name } status }
+      experience
+      finishRewards {
+        traderStanding { trader { name } standing }
+        items { item { name iconLink } count }
+        offerUnlock { trader { name } level item { name iconLink } }
+        craftUnlock { station { name } level duration rewardItems { item { name iconLink } count } requiredItems { item { name } count } }
+        skillLevelReward { name level }
+      }
+    }
+  }`;
+
+  let graphqlErr;
+  try {
+    const res = await fetch(GRAPHQL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.errors) throw new Error(data.errors[0].message);
+    if (!data.data?.tasks) throw new Error('no data');
+    return data.data.tasks;
+  } catch(e) {
+    graphqlErr = e;
+  }
+
+  console.warn('[EFT] GraphQL failed, using JSON API fallback:', graphqlErr.message);
+  _fallbackActive = true;
+  try {
+    return await fetchTasksFallback(gameMode, lang);
+  } catch(fallbackErr) {
+    throw new Error(`GraphQL: ${graphqlErr.message} / JSON API: ${fallbackErr.message}`);
+  }
+}
+
+async function reload() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('tree-container').style.display = 'none';
+  document.getElementById('stats-bar').style.display = 'none';
+  document.getElementById('legend').style.display = 'none';
+  document.getElementById('status').textContent = '読み込み中...';
+  document.getElementById('s-total').textContent = '-';
+
+  try {
+    allTasks = await fetchTasks();
+    buildTree();
+    renderSidebar();
+    renderLegend();
+    applyFilter();
+    document.getElementById('status').textContent = `${allTasks.length} タスク取得完了` + (_fallbackActive ? ' [JSON API]' : '');
+    document.getElementById('stats-bar').style.display = 'flex';
+    document.getElementById('legend').style.display = 'flex';
+    document.getElementById('level-filter-bar').style.display = 'flex';
+    document.getElementById('badge-filter-bar').style.display = 'flex';
+  } catch(e) {
+    document.getElementById('status').textContent = 'エラー: ' + e.message;
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('loading').innerHTML = `<div style="color:var(--danger)">取得失敗: ${e.message}</div>`;
+  }
+}
+
+function buildTree() {
+  taskMap = {};
+  childrenMap = {};
+
+  allTasks.forEach(t => {
+    taskMap[t.id] = t;
+    childrenMap[t.id] = [];
+  });
+
+  // 子→親の逆関係を構築
+  // taskRequirements = このタスクの前提タスク(親)
+  // なので 親のchildrenに自分を追加
+  const hasParent = new Set();
+
+  allTasks.forEach(t => {
+    if (t.taskRequirements && t.taskRequirements.length > 0) {
+      t.taskRequirements.forEach(req => {
+        const parentId = req.task.id;
+        if (childrenMap[parentId]) {
+          childrenMap[parentId].push(t);
+          hasParent.add(t.id);
+        }
+      });
+    }
+  });
+
+  rootTasks = allTasks.filter(t => !hasParent.has(t.id));
+
+  // ソート: トレーダー名 → minPlayerLevel
+  const sortTasks = (arr) => arr.sort((a, b) => {
+    const tn = (a.trader?.name || '').localeCompare(b.trader?.name || '');
+    if (tn !== 0) return tn;
+    return (a.minPlayerLevel || 0) - (b.minPlayerLevel || 0);
+  });
+
+  sortTasks(rootTasks);
+  Object.values(childrenMap).forEach(arr => sortTasks(arr));
+}
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const traders = {};
+  allTasks.forEach(t => {
+    const name = t.trader?.name || '不明';
+    traders[name] = (traders[name] || 0) + 1;
+  });
+
+  document.getElementById('count-all').textContent = allTasks.length;
+
+  // 既存ボタンを残しつつトレーダーボタンを差し替え
+  sidebar.innerHTML = `
+    <div class="trader-btn ${selectedTrader === 'all' ? 'active' : ''}" data-trader="all" onclick="selectTrader('all',this)">
+      <span class="trader-dot" style="background:var(--text2)"></span>
+      <span>全トレーダー</span>
+      <span class="trader-count">${allTasks.length}</span>
+    </div>
+  `;
+
+  Object.entries(traders).sort((a,b) => a[0].localeCompare(b[0])).forEach(([name, count]) => {
+    const color = TRADER_COLORS[name] || '#888';
+    const btn = document.createElement('div');
+    btn.className = 'trader-btn' + (selectedTrader === name ? ' active' : '');
+    btn.dataset.trader = name;
+    btn.onclick = function() { selectTrader(name, this); };
+    btn.innerHTML = `
+      <span class="trader-dot" style="background:${color}"></span>
+      <span>${name}</span>
+      <span class="trader-count">${count}</span>
+    `;
+    sidebar.appendChild(btn);
+  });
+}
+
+function renderLegend() {
+  const legend = document.getElementById('legend');
+  const traders = [...new Set(allTasks.map(t => t.trader?.name).filter(Boolean))].sort();
+  legend.innerHTML = `<span style="color:var(--text2); font-size:11px; margin-right:4px;">トレーダー:</span>`;
+  traders.forEach(name => {
+    const color = TRADER_COLORS[name] || '#888';
+    const item = document.createElement('span');
+    item.className = 'legend-item';
+    item.innerHTML = `<span class="legend-dot" style="background:${color}"></span>${name}`;
+    legend.appendChild(item);
+  });
+}
+
+function selectTrader(name, el) {
+  selectedTrader = name;
+  document.querySelectorAll('.trader-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  applyFilter();
+}
+
+function onSearch() {
+  searchQuery = document.getElementById('search').value.trim().toLowerCase();
+  applyFilter();
+}
+
+function applyFilter() {
+  // 検索マッチID収集
+  matchedIds = new Set();
+  if (searchQuery) {
+    allTasks.forEach(t => {
+      if (t.name.toLowerCase().includes(searchQuery)) {
+        matchedIds.add(t.id);
+        // 祖先もマーク
+        markAncestors(t.id);
+      }
+    });
+  }
+
+  renderTree();
+}
+
+function markAncestors(id) {
+  const task = taskMap[id];
+  if (!task) return;
+  (task.taskRequirements || []).forEach(req => {
+    if (!matchedIds.has(req.task.id)) {
+      matchedIds.add(req.task.id);
+      markAncestors(req.task.id);
+    }
+  });
+}
+
+function renderTree() {
+  const container = document.getElementById('tree-container');
+  document.getElementById('loading').style.display = 'none';
+  container.style.display = 'block';
+
+  // フィルタ適用
+  let roots = rootTasks;
+  if (selectedTrader !== 'all') {
+    // そのトレーダーのタスクが含まれるサブツリーのルートのみ
+    const traderIds = new Set(allTasks.filter(t => t.trader?.name === selectedTrader).map(t => t.id));
+    roots = rootTasks.filter(r => hasDescendantInSet(r.id, traderIds));
+  }
+
+  if (searchQuery) {
+    roots = roots.filter(r => matchedIds.has(r.id));
+  }
+
+  // レベルフィルター: マッチするタスクの祖先ルートも含む
+  if (levelMin !== null || levelMax !== null) {
+    const lvMatched = new Set(allTasks.filter(passesLevelFilter).map(t => t.id));
+    lvVisibleSet = new Set();
+    const markLvAncestors = (id) => {
+      if (lvVisibleSet.has(id)) return;
+      lvVisibleSet.add(id);
+      (taskMap[id]?.taskRequirements || []).forEach(r => markLvAncestors(r.task.id));
+    };
+    lvMatched.forEach(id => markLvAncestors(id));
+    roots = roots.filter(r => lvVisibleSet.has(r.id));
+    document.getElementById('lv-match').textContent = `${lvMatched.size} タスクにマッチ`;
+  } else {
+    lvVisibleSet = null;
+    document.getElementById('lv-match').textContent = '';
+  }
+
+  // 統計
+  let totalVisible = 0;
+  const countVisible = (id) => {
+    if (selectedTrader !== 'all' && !isInTraderSubtree(id)) return;
+    if (searchQuery && !matchedIds.has(id)) return;
+    totalVisible++;
+    (childrenMap[id] || []).forEach(c => countVisible(c.id));
+  };
+  roots.forEach(r => countVisible(r.id));
+
+  document.getElementById('s-total').textContent = allTasks.length;
+  document.getElementById('s-roots').textContent = roots.length;
+  document.getElementById('s-depth').textContent = computeMaxDepth(roots);
+  document.getElementById('s-visible').textContent = totalVisible;
+
+  container.innerHTML = '';
+  const rootEl = document.createElement('div');
+  rootEl.className = 'tree-root';
+
+  roots.forEach(task => {
+    rootEl.appendChild(buildNodeEl(task, 0));
+  });
+
+  container.appendChild(rootEl);
+}
+
+function hasDescendantInSet(id, idSet) {
+  if (idSet.has(id)) return true;
+  return (childrenMap[id] || []).some(c => hasDescendantInSet(c.id, idSet));
+}
+
+function isInTraderSubtree(id) {
+  if (selectedTrader === 'all') return true;
+  const traderIds = new Set(allTasks.filter(t => t.trader?.name === selectedTrader).map(t => t.id));
+  return hasDescendantInSet(id, traderIds);
+}
+
+function computeMaxDepth(roots, cur = 0) {
+  if (!roots || roots.length === 0) return cur;
+  return Math.max(...roots.map(r => computeMaxDepth(childrenMap[r.id] || [], cur + 1)));
+}
+
+function buildNodeEl(task, depth) {
+  const children = (childrenMap[task.id] || []).filter(c => {
+    if (selectedTrader !== 'all' && !isInTraderSubtree(c.id)) return false;
+    if (searchQuery && !matchedIds.has(c.id)) return false;
+    if (lvVisibleSet && !lvVisibleSet.has(c.id)) return false;
+    return true;
+  });
+
+  const hasChildren = children.length > 0;
+  const isExpanded = expandedSet.has(task.id);
+  const isHighlight = searchQuery && task.name.toLowerCase().includes(searchQuery);
+
+  const traderName = task.trader?.name || '';
+  const traderColor = TRADER_COLORS[traderName] || '#888';
+
+  const nodeEl = document.createElement('div');
+  nodeEl.className = 'tree-node';
+  nodeEl.dataset.id = task.id;
+
+  // Row
+  const row = document.createElement('div');
+  row.className = 'node-row' + (isHighlight ? ' highlight' : '');
+  row.onclick = (e) => {
+    if (e.target.tagName === 'A') return;
+    toggleNode(task.id);
+  };
+  row.addEventListener('mouseenter', (e) => showTooltip(e, task));
+  row.addEventListener('mouseleave', hideTooltip);
+
+  // Toggle button
+  if (hasChildren) {
+    const tog = document.createElement('span');
+    tog.className = 'toggle-btn';
+    tog.textContent = isExpanded ? '−' : '+';
+    tog.onclick = (e) => { e.stopPropagation(); toggleNode(task.id); };
+    row.appendChild(tog);
+  } else {
+    const ph = document.createElement('span');
+    ph.className = 'toggle-placeholder';
+    row.appendChild(ph);
+  }
+
+  // Trader badge
+  const badge = document.createElement('span');
+  badge.className = 'trader-badge';
+  badge.style.background = traderColor + '25';
+  badge.style.color = traderColor;
+  badge.textContent = traderName;
+  row.appendChild(badge);
+
+  // Name
+  const nameEl = document.createElement('span');
+  nameEl.className = 'task-name';
+  if (task.wikiLink) {
+    nameEl.innerHTML = `<a href="${task.wikiLink}" target="_blank" onclick="e=>e.stopPropagation()">${task.name}</a>`;
+  } else {
+    nameEl.textContent = task.name;
+  }
+  row.appendChild(nameEl);
+
+  // Level
+  if (task.minPlayerLevel) {
+    const lvl = document.createElement('span');
+    lvl.className = 'task-level';
+    lvl.textContent = `Lv${task.minPlayerLevel}`;
+    row.appendChild(lvl);
+  }
+
+  // Reward badges
+  const r = task.finishRewards || {};
+  const badges = [];
+  if (r.items?.length)       badges.push(['ITEM', 'rbadge-item']);
+  if (r.offerUnlock?.length) badges.push(['購入', 'rbadge-unlock']);
+  if (r.craftUnlock?.length) badges.push(['製造', 'rbadge-craft']);
+  if (task.experience > 0)   badges.push(['XP',   'rbadge-xp']);
+  if (r.skillLevelReward?.length) badges.push(['SKL', 'rbadge-skill']);
+
+  if (badges.length > 0) {
+    const wrap = document.createElement('span');
+    wrap.className = 'reward-badges';
+    badges.forEach(([label, cls]) => {
+      const b = document.createElement('span');
+      b.className = `rbadge ${cls}`;
+      b.textContent = label;
+      b.style.display = visibleBadges.has(label) ? '' : 'none';
+      wrap.appendChild(b);
+    });
+    row.appendChild(wrap);
+  }
+
+  // Plan button
+  const existingTabs = getExistingTabs();
+  const alreadyInPlan = existingTabs.some(t => t.goalTaskId === task.id);
+  const planBtn = document.createElement('button');
+  planBtn.className = 'plan-btn' + (alreadyInPlan ? ' added' : '');
+  planBtn.dataset.id = task.id;
+  planBtn.title = 'プランに追加';
+  planBtn.textContent = alreadyInPlan ? '✓' : '+';
+  planBtn.onclick = (e) => { e.stopPropagation(); openPlanPop(task.id, planBtn); };
+  row.appendChild(planBtn);
+
+  // Child count
+  if (hasChildren) {
+    const cc = document.createElement('span');
+    cc.style.cssText = 'font-size:10px;color:var(--text2);white-space:nowrap;flex-shrink:0';
+    cc.textContent = `▶ ${children.length}`;
+    row.appendChild(cc);
+  }
+
+  nodeEl.appendChild(row);
+
+  // Children container
+  if (hasChildren && isExpanded) {
+    const childContainer = document.createElement('div');
+    childContainer.className = 'children-container';
+    children.forEach(child => {
+      const connector = document.createElement('div');
+      connector.className = 'connector';
+      const childEl = buildNodeEl(child, depth + 1);
+      childContainer.appendChild(connector);
+      childContainer.appendChild(childEl);
+    });
+    nodeEl.appendChild(childContainer);
+  }
+
+  return nodeEl;
+}
+
+function toggleNode(id) {
+  if (expandedSet.has(id)) {
+    expandedSet.delete(id);
+  } else {
+    expandedSet.add(id);
+  }
+  renderTree();
+}
+
+function expandAll() {
+  allTasks.forEach(t => {
+    if ((childrenMap[t.id] || []).length > 0) expandedSet.add(t.id);
+  });
+  renderTree();
+}
+
+function collapseAll() {
+  expandedSet.clear();
+  renderTree();
+}
+
+// ========== LEVEL FILTER ==========
+let levelMin = null;
+let levelMax = null;
+let lvVisibleSet = null; // renderTree で更新
+
+function onLevelFilter() {
+  const minEl = document.getElementById('lv-min');
+  const maxEl = document.getElementById('lv-max');
+  levelMin = minEl.value ? parseInt(minEl.value) : null;
+  levelMax = maxEl.value ? parseInt(maxEl.value) : null;
+  renderTree();
+}
+
+function resetLevelFilter() {
+  document.getElementById('lv-min').value = '';
+  document.getElementById('lv-max').value = '';
+  levelMin = null;
+  levelMax = null;
+  renderTree();
+}
+
+function passesLevelFilter(task) {
+  if (levelMin === null && levelMax === null) return true;
+  const lv = task.minPlayerLevel || 0;
+  if (levelMin !== null && lv < levelMin) return false;
+  if (levelMax !== null && lv > levelMax) return false;
+  return true;
+}
+
+// ========== PLAN POPOVER ==========
+const TAG_COLORS = [
+  '#ef4444','#f97316','#f59e0b','#84cc16',
+  '#22c55e','#14b8a6','#3b82f6','#8b5cf6',
+  '#ec4899','#94a3b8','#06b6d4','#a78bfa',
+];
+let popTaskId = null;
+let popColor = TAG_COLORS[0];
+
+function initColorSwatches() {
+  const wrap = document.getElementById('pop-colors');
+  wrap.innerHTML = '';
+  TAG_COLORS.forEach((c, i) => {
+    const s = document.createElement('span');
+    s.className = 'color-swatch' + (i === 0 ? ' selected' : '');
+    s.style.background = c;
+    s.onclick = () => {
+      wrap.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('selected'));
+      s.classList.add('selected');
+      popColor = c;
+    };
+    wrap.appendChild(s);
+  });
+  popColor = TAG_COLORS[0];
+}
+
+function openPlanPop(taskId, btnEl) {
+  hideTooltip();
+  const task = taskMap[taskId];
+  if (!task) return;
+  popTaskId = taskId;
+
+  document.getElementById('pop-task-name').textContent = task.name;
+  document.getElementById('pop-tab-name').value = task.name;
+
+  // 既追加チェック
+  const existing = getExistingTabs();
+  const alreadyAdded = existing.some(t => t.goalTaskId === taskId);
+  if (alreadyAdded) {
+    document.getElementById('pop-tab-name').value = existing.find(t => t.goalTaskId === taskId).name;
+  }
+
+  initColorSwatches();
+
+  const pop = document.getElementById('plan-popover');
+  pop.style.display = 'flex';
+
+  // 位置調整
+  const rect = btnEl.getBoundingClientRect();
+  const pw = 240, ph = 200;
+  let x = rect.right + 6;
+  let y = rect.top;
+  if (x + pw > window.innerWidth - 8) x = rect.left - pw - 6;
+  if (y + ph > window.innerHeight - 8) y = window.innerHeight - ph - 8;
+  pop.style.left = x + 'px';
+  pop.style.top  = y + 'px';
+
+  // 外クリックで閉じる
+  setTimeout(() => document.addEventListener('click', outsidePopClick), 10);
+}
+
+function outsidePopClick(e) {
+  if (!document.getElementById('plan-popover').contains(e.target) &&
+      !e.target.classList.contains('plan-btn')) {
+    closePlanPop();
+  }
+}
+
+function closePlanPop() {
+  document.getElementById('plan-popover').style.display = 'none';
+  document.removeEventListener('click', outsidePopClick);
+  popTaskId = null;
+}
+
+function getTaskTabsKey() {
+  const mode = localStorage.getItem('eft_active_mode') || 'pvp';
+  return 'eft_task_tabs_v1__' + mode;
+}
+
+function getExistingTabs() {
+  try { return JSON.parse(localStorage.getItem(getTaskTabsKey()) || '[]'); }
+  catch { return []; }
+}
+
+function confirmAddPlan() {
+  if (!popTaskId) return;
+  const task = taskMap[popTaskId];
+  const name = document.getElementById('pop-tab-name').value.trim() || task.name;
+  const tabs = getExistingTabs().filter(t => t.goalTaskId !== popTaskId); // 重複除去
+  tabs.push({ id: 'tab_' + popTaskId, name, color: popColor, goalTaskId: popTaskId });
+  localStorage.setItem(getTaskTabsKey(), JSON.stringify(tabs));
+
+  // ボタンにフィードバック
+  const btn = document.querySelector(`.plan-btn[data-id="${popTaskId}"]`);
+  if (btn) { btn.classList.add('added'); btn.textContent = '✓'; }
+  closePlanPop();
+}
+
+// ========== BADGE FILTER ==========
+const visibleBadges = new Set(['ITEM', '購入', '製造', 'XP', 'SKL']);
+
+function toggleBadgeFilter(label, el) {
+  if (visibleBadges.has(label)) {
+    visibleBadges.delete(label);
+    el.classList.remove('active');
+  } else {
+    visibleBadges.add(label);
+    el.classList.add('active');
+  }
+  // CSSクラスで一括制御（再レンダリング不要）
+  document.querySelectorAll('.rbadge').forEach(b => {
+    b.style.display = visibleBadges.has(b.textContent) ? '' : 'none';
+  });
+  // バッジが0個になったwrapを隠す
+  document.querySelectorAll('.reward-badges').forEach(wrap => {
+    const visible = [...wrap.querySelectorAll('.rbadge')].some(b => b.style.display !== 'none');
+    wrap.style.display = visible ? '' : 'none';
+  });
+}
+
+// ========== TOOLTIP ==========
+const tooltip = document.getElementById('tooltip');
+let tipTimeout = null;
+
+function showTooltip(e, task) {
+  clearTimeout(tipTimeout);
+  tipTimeout = setTimeout(() => {
+    const r = task.finishRewards || {};
+    const standings = r.traderStanding || [];
+    const items = r.items || [];
+    const unlocks = r.offerUnlock || [];
+    const skills = r.skillLevelReward || [];
+    const exp = task.experience || 0;
+
+    let html = `<div class="tip-title">${task.name}</div>`;
+
+    // 経験値
+    if (exp > 0) {
+      html += `<div class="tip-section"><div class="tip-label">経験値</div>`;
+      html += `<span class="tip-exp">+${exp.toLocaleString()} XP</span>`;
+      html += `</div>`;
+    }
+
+    // トレーダー信頼度
+    if (standings.length > 0) {
+      html += `<div class="tip-section"><div class="tip-label">トレーダー信頼度</div><div style="display:flex;flex-wrap:wrap;gap:3px">`;
+      standings.forEach(s => {
+        const pos = s.standing >= 0;
+        html += `<span class="tip-standing${pos ? '' : ' neg'}">${s.trader.name} ${pos ? '+' : ''}${s.standing}</span>`;
+      });
+      html += `</div></div>`;
+    }
+
+    // 報酬アイテム
+    if (items.length > 0) {
+      html += `<div class="tip-section"><div class="tip-label">報酬アイテム</div>`;
+      items.forEach(i => {
+        html += `<div class="tip-row">`;
+        if (i.item.iconLink) html += `<img class="tip-icon" src="${i.item.iconLink}" alt="">`;
+        html += `<span style="color:var(--text)">${i.item.name}</span>`;
+        if (i.count > 1) html += `<span style="color:var(--text2);font-size:11px">×${i.count}</span>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // スキルレベルアップ
+    if (skills.length > 0) {
+      html += `<div class="tip-section"><div class="tip-label">スキル報酬</div>`;
+      skills.forEach(s => {
+        html += `<div class="tip-row"><span style="color:#a78bfa">${s.name}</span><span style="color:var(--text2);font-size:11px">Lv${s.level}</span></div>`;
+      });
+      html += `</div>`;
+    }
+
+    // 購入解放
+    if (unlocks.length > 0) {
+      html += `<div class="tip-section"><div class="tip-label">購入解放</div>`;
+      unlocks.forEach(u => {
+        html += `<div class="tip-unlock">`;
+        if (u.item?.iconLink) html += `<img src="${u.item.iconLink}" alt="">`;
+        html += `<span style="color:var(--text)">${u.item?.name || '?'}</span>`;
+        html += `<span style="color:var(--text2)">(${u.trader.name} LL${u.level})</span>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // クラフト解放
+    const crafts = r.craftUnlock || [];
+    if (crafts.length > 0) {
+      html += `<div class="tip-section"><div class="tip-label">クラフト解放</div>`;
+      crafts.forEach(c => {
+        const mins = Math.floor((c.duration || 0) / 60);
+        const timeStr = mins >= 60 ? `${Math.floor(mins/60)}h${mins%60 ? mins%60+'m' : ''}` : `${mins}m`;
+        const reward = c.rewardItems?.[0];
+        html += `<div class="tip-unlock">`;
+        if (reward?.item?.iconLink) html += `<img src="${reward.item.iconLink}" alt="">`;
+        html += `<span style="color:var(--text)">${reward?.item?.name || '?'}</span>`;
+        html += `<span style="color:var(--text2)">(${c.station?.name} Lv${c.level} / ${timeStr})</span>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (exp === 0 && standings.length === 0 && items.length === 0 && skills.length === 0 && unlocks.length === 0) {
+      html += `<div style="color:var(--text2);font-size:11px;margin-top:4px">報酬情報なし</div>`;
+    }
+
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+    positionTooltip(e);
+  }, 120);
+}
+
+function positionTooltip(e) {
+  const margin = 12;
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+  let x = e.clientX + margin;
+  let y = e.clientY + margin;
+  if (x + tw > window.innerWidth - 8) x = e.clientX - tw - margin;
+  if (y + th > window.innerHeight - 8) y = e.clientY - th - margin;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  clearTimeout(tipTimeout);
+  tooltip.style.display = 'none';
+}
+
+document.addEventListener('mousemove', e => {
+  if (tooltip.style.display === 'block') positionTooltip(e);
+});
+
+// 起動
+reload();
+
+// eft-tool.html でモードが切り替わったら自動リロード
+window.addEventListener('storage', e => {
+  if (e.key === 'eft_active_mode') window.location.reload();
+});
+</script>
+</body>
+</html>
