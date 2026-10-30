@@ -1,4 +1,4 @@
-      {/* ===== TAB: EVENT (Blackout) ===== */}
+      {/* ===== TAB: EVENT（期間限定イベント・内容はイベントごとに差し替え） ===== */}
       {activeTab === 'event' && (
         <div>
           {/* イベント概要 */}
@@ -81,11 +81,11 @@
                     )}
                   </div>
 
-                  {/* フレーバーテキスト（Skierセリフ） */}
+                  {/* フレーバーテキスト（依頼トレーダーのセリフ） */}
                   {task.lore && (
                     <div style={{ padding: '6px 12px 8px', borderTop: '1px solid var(--border-light)' }}>
                       <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 5 }}>
-                        <Icon name="book" size={11} color="var(--text-dim)" /> Skier
+                        <Icon name="book" size={11} color="var(--text-dim)" /> {task.trader}
                       </div>
                       <div style={{
                         fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7,
