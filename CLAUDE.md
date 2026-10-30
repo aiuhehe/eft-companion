@@ -14,6 +14,7 @@
 | `docs/` | 機能仕様書・設計ドキュメント |
 | `backups/` | バックアップファイル |
 | `README.md` | 公開用の説明（GitHub リポジトリ `aiuhehe/eft-companion`） |
+| `.github/workflows/ci.yml` | `main` 向け PR ごとに `./build.sh --dist` を実行してビルドが通るか確認（公開はしない） |
 | `.github/workflows/pages.yml` | `main` への push で `./build.sh --dist` → `dist/` を GitHub Pages（https://aiuhehe.github.io/eft-companion/）に公開 |
 | `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`maps/`・開発用作業ファイルを除外 |
 

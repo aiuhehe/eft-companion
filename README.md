@@ -49,5 +49,6 @@ Escape from Tarkov の**非公式**プレイ支援ツールです。タスク進
 
 - ソースは `src/js/*.js`（JSX）と `style.css`。`eft-tool.html` はビルド出力です。
 - ビルド: `./build.sh`（Mac / WSL / Git Bash）または `.\build.ps1`（Windows PowerShell）→ `eft-tool.html` をブラウザで開く
-- 公開: `main` に push すると GitHub Actions が `./build.sh --dist` を実行し、`dist/` を GitHub Pages に公開します。
+- 変更はブランチ → Pull Request で提出し、レビュー後に `main` へマージします（PR ではビルド確認だけが走ります）。
+- 公開: `main` にマージされると GitHub Actions が `./build.sh --dist` を実行し、`dist/` を GitHub Pages に公開します。
 - 機能仕様は [docs/README.md](docs/README.md) を参照。
