@@ -334,6 +334,47 @@
   .event-req-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
   .event-req-head { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 4px; }
 
+  /* --- eventタブ: 分岐フロー図・準備物・分岐パターン（ハロウィン2026〜） --- */
+  /* フロー図全体（上から下へ1行ずつ） */
+  .event-flow { display: flex; flex-direction: column; align-items: stretch; max-width: 720px; margin: 0 auto; }
+  /* 1行。center=中央1列 / それ以外=Skier列・Therapist列の2列 */
+  .event-flow-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  .event-flow-row.is-center { display: flex; justify-content: center; }
+  .event-flow-row.is-center .event-flow-node { width: min(340px, 100%); }
+  /* 分岐行: 列の間に「or」 */
+  .event-flow-row.is-choice { grid-template-columns: 1fr auto 1fr; padding: 8px; border: 1px dashed var(--warn); border-radius: 8px; background: var(--warn-bg-weak); }
+  .event-flow-or { align-self: center; font-size: 12px; font-weight: bold; color: var(--warn-text); }
+  .event-flow-lane { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .event-flow-arrow { display: flex; justify-content: center; padding: 2px 0; }
+  .event-flow-choice-label { display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap; font-size: 12px; font-weight: bold; color: var(--warn-text); margin-bottom: 4px; }
+  /* ノード（左ボーダー色＝陣営。状態はモディファイアで切替） */
+  .event-flow-node { display: flex; align-items: center; gap: 8px; text-align: left; width: 100%; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border); border-left-width: 4px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; }
+  .event-flow-node:hover { background: var(--bg-secondary); }
+  .event-flow-node.is-done { background: var(--state-ok-bg-faint); border-color: var(--state-ok-border-weak); }
+  .event-flow-node.is-failed { opacity: 0.55; }
+  .event-flow-node.is-failed .event-flow-name { text-decoration: line-through; }
+  .event-flow-node.is-locked, .event-flow-node.is-pending { opacity: 0.7; border-style: dashed; }
+  .event-flow-name { display: block; font-size: 13px; font-weight: bold; }
+  .event-flow-sub { display: block; font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* 凡例 */
+  .event-flow-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; }
+  .event-flow-legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .event-flow-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+  /* タスクカードの分岐バッジ */
+  .event-choice-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: bold; padding: 1px 7px; border-radius: 10px; background: var(--warn-bg-weak); border: 1px solid var(--warn); color: var(--warn-text); white-space: nowrap; }
+  /* 分岐①の選択で内容が変わるタスクの2パターン */
+  .event-variant-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border-light); }
+  .event-variant { background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: 6px; padding: 8px 10px; }
+  /* 準備物 */
+  .event-prep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+  .event-prep-item { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .event-prep-icons { display: flex; flex-wrap: wrap; gap: 4px; }
+  /* フロー図ノードの番号（タスク詳細カードの番号と対応） */
+  .event-flow-num { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  /* アイテム画像（報酬・準備物） */
+  .event-item-img { object-fit: contain; flex-shrink: 0; }
+  .event-reward-item { display: inline-flex; align-items: center; gap: 4px; }
+
   /* --- フェーズ12: keysタブ 鍵一覧 --- */
   /* 表示モード切替セグメント */
   .key-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
