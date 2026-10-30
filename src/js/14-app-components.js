@@ -776,6 +776,10 @@
     const [dragging, setDragging] = React.useState(false);
     const vpRef    = React.useRef({ zoom: 1, panX: 0, panY: 0 });
     const dragRef2 = React.useRef(null);
+    // 読み込みに失敗した画像URL（src が変われば＝差し替え画像が入れば自動で再試行される）
+    const [failedSrc, setFailedSrc] = React.useState(null);
+    const imgSrc    = meta ? getMapImageSrc(mapName, meta) : null;
+    const imgFailed = !!imgSrc && failedSrc === imgSrc;
 
     React.useEffect(() => { if (mapName && !meta) ensureMapImageRegistered(mapName); }, [mapName]);
 
@@ -923,7 +927,8 @@
     }, [recalcLines, imgRev, zoom, panX, panY]);
 
     if (!mapName) return null;
-    if (!meta) {
+    // メタ（ピン座標の基準）はあるが画像が読めない場合（バックアップ復元後の公開版など）も未登録扱い
+    if (!meta || imgFailed) {
       return (
         <div className="section" style={{ fontSize: 12, color: 'var(--text-dim)' }}>
           <Icon name="alert-triangle" size={13} color="var(--warn)" /> マップ画像が未登録です。
@@ -957,9 +962,10 @@
               onMouseMove={handleDragMove}
               onMouseUp={handleDragEnd}
               onMouseLeave={handleDragEnd}>
-              <img ref={imgRef} src={getMapImageSrc(mapName, meta)} alt={mapName}
+              <img ref={imgRef} src={imgSrc} alt={mapName}
                 style={{ width: '100%', display: 'block' }}
                 draggable={false}
+                onError={() => setFailedSrc(imgSrc)}
                 onLoad={() => { setImgRev(r => r + 1); if (imgRef.current) setImgHeight(imgRef.current.offsetHeight); }} />
 
               {sortedPins.map(({ pin, cat, checked }, idx) => {
