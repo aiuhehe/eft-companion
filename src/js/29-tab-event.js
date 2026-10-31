@@ -13,7 +13,8 @@
               治療法を探る <strong style={{ color: 'var(--info)' }}>Therapist</strong> のどちらに協力するかで、クエストが途中から分岐する。
               <br />
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                ※ 分岐では選ばなかった側のタスクが失敗扱いになる。イベント終了日は未発表。情報源: Fandom Wiki（2026-10-30 時点・編集途中の項目あり）。
+                ※ 分岐では選ばなかった側のタスクが失敗扱いになる。最終タスクの実績（Skier 側／Therapist 側）はどちらか一方しか取れない。
+                2026-10-29 開始・終了日は未発表。情報源: Fandom Wiki（2026-10-30 時点）、後半タスクは tarkovhead.com / tarkov.help 等（2026-10-31 時点・報酬未確認の項目あり）。
               </span>
             </div>
           </div>
