@@ -5,7 +5,8 @@
 // 既知タスクはハードコードで保持し、API に同名タスクが登録されたら自動的に
 // completedTaskIds（共有）へ移行できるよう id フィールドを設ける。
 // 新タスクが追加されたらここに追記する（apiId は API 登録後に埋める）。
-// 現在: ハロウィン2026（情報源: Fandom Wiki 各クエストページ・2026-10-30 時点）
+// 現在: ハロウィン2026（情報源: Fandom Wiki 各クエストページ・2026-10-30 時点。
+//   High-Risk, High-Reward 以降・Prototyping 以降は tarkovhead.com / tarkov.help / skycoach.gg・2026-10-31 時点）
 // objectives の追加フィールド（カスタムタスク化で使う。表示には影響しない）:
 //   maps: 出撃準備タブのマップ名（RAID_MAPS の英語名。Infected Factory→'Factory'、Infected Lab→'The Lab'）
 //   count / target（kill）/ itemId・itemName・fir（アイテム系）/ category（「任意の○○」系）/ questItemName（findQuestItem）
@@ -283,28 +284,205 @@ const BLACKOUT_TASKS_STATIC = [
     apiId: null,
     name: 'Halloween: Prototyping',
     nameJa: '試作',
-    trader: '不明',
+    trader: 'Skier',
     branch: 'skier',
-    pending: true,
     prereqs: ['hw26_danger_zone'],
-    lore: '',
-    objectives: [],
+    lore: '出回った薬の出所はまだ調査中。手がかりとして、TG-Vi-24 ワクチンの試作品を探して持ってくるよう Skier は頼む。',
+    objectives: [
+      { type: 'findItem', description: 'TG-Vi-24 ワクチン試作品（B.1.2 株）を2個入手する', itemId: '6acc4c757587fb38c508c5fa', itemName: 'TG-Vi-24 ワクチン試作品（B.1.2 株）', count: 2 },
+      { type: 'giveItem', description: 'TG-Vi-24 ワクチン試作品（B.1.2 株）を2個納品する', itemId: '6acc4c757587fb38c508c5fa', itemName: 'TG-Vi-24 ワクチン試作品（B.1.2 株）', count: 2 },
+    ],
+    tips: [
+      '報酬は未確認（情報源に未掲載）',
+    ],
+    experience: 0,
+    rewardItems: [],
+  },
+  {
+    key: 'hw26_enemy_of_enemy',
+    apiId: null,
+    name: 'Halloween: Enemy of My Enemy',
+    nameJa: '敵の敵',
+    trader: 'Skier',
+    branch: 'skier',
+    prereqs: ['hw26_coincidence'],
+    lore: '「偶然か？」で見つけた感染データのフォルダを、Skier は Therapist に渡したい。対になるタスク「敵の敵 — 合意」で Therapist に渡すと、このタスクも同時に完了する。',
+    objectives: [
+      { type: 'giveItem', description: '感染データのフォルダを Therapist に渡す（「敵の敵 — 合意」の納品で完了）', questItemName: '感染データのフォルダ' },
+    ],
+    tips: [
+      'フォルダは「偶然か？」の完了後に Skier からメッセージで届く',
+      '報酬は未確認（情報源に未掲載）',
+    ],
+    experience: 0,
+    rewardItems: [],
+  },
+  {
+    key: 'hw26_enemy_agreement',
+    apiId: null,
+    name: 'Halloween: Enemy of My Enemy - An Agreement',
+    nameJa: '敵の敵 — 合意',
+    trader: 'Therapist',
+    branch: 'skier',
+    prereqs: ['hw26_coincidence'],
+    lore: 'Skier から届いたデータのフォルダを Therapist に渡す連動タスク。これを納品すると「敵の敵」も同時に完了する。',
+    objectives: [
+      { type: 'giveItem', description: 'Skier から受け取ったデータのフォルダを Therapist に納品する', questItemName: '感染データのフォルダ' },
+    ],
+    tips: [
+      '報酬は未確認（情報源に未掲載）',
+    ],
+    experience: 0,
+    rewardItems: [],
+  },
+  {
+    key: 'hw26_blind_enemy',
+    apiId: null,
+    name: 'Halloween: Blind the Enemy',
+    nameJa: '敵の目を潰せ',
+    trader: 'Skier',
+    branch: 'skier',
+    prereqs: ['hw26_enemy_of_enemy'],
+    lore: 'Skier 側の最終タスク。完了すると Skier 側の実績が得られる（実績はどちらか一方の陣営のみ）。',
+    objectives: [
+      { type: 'giveItem', description: '指定のワクチンを納品する（詳細未確認）' },
+      { type: 'shoot', description: 'Woods・Customs・Lighthouse・Reserve・Shoreline の監視カメラを破壊する（詳細未確認）', maps: ['Woods', 'Customs', 'Lighthouse', 'Reserve', 'Shoreline'] },
+    ],
+    tips: [
+      '目標は1つの情報源のみ・報酬は未確認',
+    ],
     experience: 0,
     rewardItems: [],
   },
   {
     key: 'hw26_high_risk',
     apiId: null,
-    name: 'Halloween: High-Risk, High-Rewards',
+    name: 'Halloween: High-Risk, High-Reward',
     nameJa: 'ハイリスク・ハイリターン',
-    trader: '不明',
+    trader: 'Therapist',
     branch: 'therapist',
-    pending: true,
     prereqs: ['hw26_new_vaccine'],
-    lore: '',
-    objectives: [],
-    experience: 0,
+    map: 'Infected Factory / Infected Lab',
+    lore: '新しいワクチンの効果を確かめるには、まず感染者の数を減らす必要がある。Infected Factory か Infected Lab で感染者を大量に始末してほしい、と Therapist は頼む。',
+    objectives: [
+      { type: 'kill', description: 'Infected Factory か Infected Lab で感染者を30体倒す', maps: ['Factory', 'The Lab'], target: 'Infected', count: 30 },
+    ],
+    tips: [
+      '数をこなすので Factory でショットガンを使うのが楽',
+    ],
+    experience: 44000,
+    rubles: 350000,
+    rewardItems: [
+      { id: '5c0e530286f7747fa1419862', name: 'Propital', count: 3 },
+    ],
+  },
+  {
+    key: 'hw26_first_results',
+    apiId: null,
+    name: 'Halloween: First results',
+    nameJa: '最初の成果',
+    trader: 'Therapist',
+    branch: 'therapist',
+    prereqs: ['hw26_high_risk'],
+    map: 'Infected Factory / Infected Lab',
+    lore: 'Therapist が渡す試作のガスグレネードを感染者の群れに投げ込み、ガスを浴びた個体を倒して効果を確かめる。',
+    objectives: [
+      { type: 'findItem', description: '（任意）試作ガスグレネード RDA-68 を入手する', itemId: '6a9854e0788619fe8502a6b7', itemName: 'RDA-68 ガスグレネード' },
+      { type: 'kill', description: '試作グレネードのガスを浴びた感染者を25体倒す', maps: ['Factory', 'The Lab'], target: 'Infected', count: 25 },
+    ],
+    tips: [
+      'ガスマスクなどガス対策の装備を持ち込む',
+      'グレネードが足りなくなったら Therapist のバーター（Black Division のガスグレネードか血液サンプルと交換）で入手できる',
+    ],
+    experience: 42000,
+    rubles: 350000,
+    rewardItems: [
+      { id: '590c657e86f77412b013051d', name: 'Grizzly 医療キット', count: 5 },
+    ],
+  },
+  {
+    key: 'hw26_studying_enemy',
+    apiId: null,
+    name: 'Halloween: Studying the Enemy',
+    nameJa: '敵を知る',
+    trader: 'Therapist',
+    branch: 'therapist',
+    prereqs: ['hw26_high_risk'],
+    lore: '感染の仕組みを調べるため、Therapist は感染者の組織サンプルを求めている。',
+    objectives: [
+      { type: 'giveItem', description: '感染組織サンプルを2個納品する', itemId: '6acc4af5ada0d6309902b049', itemName: '感染組織サンプル', count: 2 },
+    ],
+    tips: [
+      '組織サンプルは「大義のために — 合意」の報酬かフリーマーケットで入手',
+    ],
+    experience: 34000,
+    rubles: 175000,
     rewardItems: [],
+  },
+  {
+    key: 'hw26_greater_good',
+    apiId: null,
+    name: 'Halloween: For the Greater Good',
+    nameJa: '大義のために',
+    trader: 'Therapist',
+    branch: 'therapist',
+    prereqs: ['hw26_first_results'],
+    lore: 'Therapist から感染データの入ったフラッシュドライブを預かり、Skier に届ける。対になるタスク「大義のために — 合意」で Skier に渡すと、このタスクも同時に完了する。',
+    objectives: [
+      { type: 'giveItem', description: '感染データを Skier に渡す（「大義のために — 合意」の納品で完了）', questItemName: '感染データ' },
+    ],
+    experience: 24000,
+    rubles: 175000,
+    rewardItems: [
+      { id: '5c94bbff86f7747ee735c08f', name: 'TerraGroup Labs アクセスキーカード', count: 4 },
+      { id: '5af0548586f7743a532b7e99', name: 'Ibuprofen', count: 2 },
+      { id: '590c695186f7741e566b64a2', name: 'Augmentin', count: 2 },
+    ],
+  },
+  {
+    key: 'hw26_greater_good_agreement',
+    apiId: null,
+    name: 'Halloween: For the Greater Good - An Agreement',
+    nameJa: '大義のために — 合意',
+    trader: 'Skier',
+    branch: 'therapist',
+    prereqs: ['hw26_greater_good'],
+    lore: 'Therapist から預かった感染データを Skier に渡す連動タスク。これを納品すると「大義のために」も同時に完了する。',
+    objectives: [
+      { type: 'giveItem', description: 'Therapist から預かった感染データを Skier に納品する', questItemName: '感染データ' },
+    ],
+    experience: 18000,
+    euros: 2100,
+    rewardItems: [
+      { id: '6acc4af5ada0d6309902b049', name: '感染組織サンプル', count: 2 },
+    ],
+  },
+  {
+    key: 'hw26_final_push',
+    apiId: null,
+    name: 'Halloween: The Final Push',
+    nameJa: '最後のひと押し',
+    trader: 'Therapist',
+    branch: 'therapist',
+    prereqs: ['hw26_greater_good_agreement'],
+    map: 'Infected Factory / Infected Lab',
+    lore: 'Therapist 側の最終タスク。改良版のガスグレネードで感染者を倒し、感染した Tagilla も仕留める。完了すると Therapist 側の実績が得られる（実績はどちらか一方の陣営のみ）。',
+    objectives: [
+      { type: 'findItem', description: '（任意）試作ガスグレネード RDA-78 を入手する', itemId: '6a9854955358fa10380b8509', itemName: 'RDA-78 ガスグレネード' },
+      { type: 'kill', description: '試作グレネードのガスを浴びた感染者を30体倒す', maps: ['Factory', 'The Lab'], target: 'Infected', count: 30 },
+      { type: 'kill', description: '感染した Tagilla を倒す', maps: ['Factory', 'The Lab'], target: 'Tagilla', count: 1 },
+    ],
+    tips: [
+      'Tagilla は Infected Factory・Infected Lab の両方に出る（やや弱体化版）',
+      'ガス対策の装備と高威力のスラッグ弾ショットガンがおすすめ',
+      'ルーブル報酬は情報源で 520,000 / 530,000 と食い違うため未記載',
+    ],
+    experience: 60000,
+    rewardItems: [
+      { id: '59fb042886f7746c5005a7b2', name: 'Item case', count: 1 },
+      { id: '6acc4e8fada0d6309902b04d', name: 'RDA-78 ワクチン', count: 1 },
+      { id: '6acc4c757587fb38c508c5fa', name: 'TG-Vi-24 ワクチン試作品（B.1.2 株）', count: 1 },
+    ],
   },
 ];
 
@@ -317,7 +495,9 @@ const EVENT_FLOW = [
   { choice: '分岐① ワクチンをどうする？', skier: ['hw26_unexpected_help'], therapist: ['hw26_initial_exam'] },
   { choice: '分岐② どちらの陣営につく？', skier: ['hw26_tightening'], therapist: ['hw26_new_vaccine'] },
   { skier: ['hw26_danger_zone'], therapist: ['hw26_high_risk'] },
-  { skier: ['hw26_coincidence', 'hw26_prototyping'], therapist: [] },
+  { skier: ['hw26_coincidence', 'hw26_prototyping'], therapist: ['hw26_first_results', 'hw26_studying_enemy'] },
+  { skier: ['hw26_enemy_of_enemy', 'hw26_enemy_agreement'], therapist: ['hw26_greater_good', 'hw26_greater_good_agreement'] },
+  { skier: ['hw26_blind_enemy'], therapist: ['hw26_final_push'] },
 ];
 
 // 事前に用意しておくと詰まらないもの（itemIds はアイコン表示用。複数なら代表例を並べる）
@@ -328,6 +508,8 @@ const EVENT_PREP = [
   { name: '重度出血を止められる医療キット 7個（FIR）', note: '隔離の強化。Skier 側なら5個（AFAK・IFAK・Grizzly・Salewa など）', itemIds: ['60098ad7c2240c0fe85c570a', '590c678286f77426c9660122', '590c657e86f77412b013051d', '544fb45d4bdc2dee738b4568'] },
   { name: '医療用バーム 3個・手術キット 3個（FIR）', note: '隔離の強化。Skier 側なら各2個', itemIds: ['5751a89d24597722aa0e8db0', '5d02778e86f774203e7dedbe', '5d02797c86f774203f38e30a'] },
   { name: '2,000 ドル', note: '新たなワクチン（分岐①で Skier 側を選んだ場合）', itemIds: ['5696686a4bdc2da3298b456a'] },
+  { name: 'ガスマスクなどのガス対策装備', note: '最初の成果・最後のひと押し（Therapist 側）で試作ガスグレネードを使う' },
+  { name: '感染組織サンプル 2個', note: '敵を知る（Therapist 側）。「大義のために — 合意」の報酬かフリマで入手', itemIds: ['6acc4af5ada0d6309902b049'] },
 ];
 
 // 通貨報酬 → tarkov.dev のアイテムID（カスタムタスクの報酬に変換するとき使う）
