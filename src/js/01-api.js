@@ -52,14 +52,25 @@ function _applyLocale(obj, locale) {
   return obj;
 }
 
+// 翻訳済み data のキャッシュ（items は約17MBあり、翻訳適用を何度も走らせないため）
+const _translatedCache = {};
+
 // メインデータ + ロケールを並列取得して翻訳適用（翻訳済み data を返す）
-async function _fetchTranslated(jMode, path, lang) {
+function _fetchTranslated(jMode, path, lang) {
   const base = `${JSON_API_BASE}/${jMode}/${path}`;
-  const [main, loc] = await Promise.all([
-    _fetchJson(base),
-    _fetchJson(`${base}_${lang}`).then(r => r.data ?? {}).catch(() => ({})),
-  ]);
-  return _applyLocale(main.data, loc);
+  const key = `${base}_${lang}`;
+  if (!_translatedCache[key]) {
+    _translatedCache[key] = Promise.all([
+      _fetchJson(base),
+      _fetchJson(key).then(r => r.data ?? {}).catch(() => ({})),
+    ])
+      .then(([main, loc]) => _applyLocale(main.data, loc))
+      .catch(err => {
+        delete _translatedCache[key];
+        throw err;
+      });
+  }
+  return _translatedCache[key];
 }
 
 // items をIDキーのマップとして取得（翻訳済み）
@@ -299,6 +310,121 @@ function _transformCrafts(data, itemsMap, stationsMap) {
   return { crafts };
 }
 
+// ── アイテム詳細系（弾薬・プレート・プリセット）の共通ヘルパー ─────────
+
+// buyFromTrader → GraphQL 形式の buyFor。vendor は ammo/armorPlates（name/normalizedName/taskUnlock）と
+// weaponMods（trader）の両クエリを満たす形にする。フリマは noFlea でない場合のみ追加
+function _makeBuyFor(item, tradersById, tasksById) {
+  const offers = (item.buyFromTrader || []).map(b => {
+    const name = TRADER_NAMES[b.trader] || tradersById[b.trader]?.name || b.trader;
+    return {
+      vendor: {
+        name,
+        normalizedName: tradersById[b.trader]?.normalizedName || name.toLowerCase(),
+        trader: { id: b.trader, name },
+        minTraderLevel: b.minTraderLevel || 1,
+        taskUnlock: b.taskUnlock ? { id: b.taskUnlock, name: tasksById[b.taskUnlock]?.name || '' } : null,
+      },
+      price: b.price ?? 0,
+      currency: b.currency || 'RUB',
+      priceRUB: b.priceRUB ?? b.price ?? 0,
+    };
+  });
+  if (!(item.types || []).includes('noFlea')) {
+    const p = item.lastLowPrice || item.avg24hPrice;
+    if (p) offers.push({ vendor: { name: 'Flea Market', normalizedName: 'flea-market' }, price: p, currency: 'RUB', priceRUB: p });
+  }
+  return offers;
+}
+
+// 報酬アイテムID → { bartersFor, craftsFor }（GraphQL 形式）の逆引きマップ。
+// JSON API の items には bartersFor/craftsFor が無いため、生の barters/crafts から組み立てる
+function _buildAcquisitionIndex(barters, crafts, { tradersById, tasksById, stationsById }) {
+  const index = {};
+  const entry = id => (index[id] ??= { bartersFor: [], craftsFor: [] });
+  const taskRef = id => (id ? { id, name: tasksById[id]?.name || '' } : null);
+  Object.values(barters || {}).forEach(b => {
+    if (!b.offeredItem?.item) return;
+    entry(b.offeredItem.item).bartersFor.push({
+      trader: { id: b.trader, name: TRADER_NAMES[b.trader] || tradersById[b.trader]?.name || b.trader },
+      level: b.minTraderLevel || 1,
+      taskUnlock: taskRef(b.taskUnlock),
+    });
+  });
+  Object.values(crafts || {}).forEach(c => {
+    if (!c.productItem?.item) return;
+    const st = stationsById[c.station] || {};
+    entry(c.productItem.item).craftsFor.push({
+      station: { id: c.station, name: st.name || _slugToTitle(st.normalizedName) || c.station || '' },
+      level: c.level || 1,
+      taskUnlock: taskRef(c.taskUnlock),
+    });
+  });
+  return index;
+}
+
+const _byId = data => {
+  const m = {};
+  Object.values(data || {}).forEach(x => { if (x?.id) m[x.id] = x; });
+  return m;
+};
+
+// アイテム詳細系の変換に必要なデータ一式（他クエリと _fetchJson / _fetchTranslated のキャッシュを共有）
+const _itemDetailCtxCache = {};
+function _loadItemDetailContext(jMode, lang) {
+  const key = `${jMode}/${lang}`;
+  if (!_itemDetailCtxCache[key]) {
+    _itemDetailCtxCache[key] = Promise.all([
+      _fetchTranslated(jMode, 'items', lang),
+      _fetchTranslated(jMode, 'traders', lang),
+      _fetchTranslated(jMode, 'tasks', lang),
+      _fetchTranslated(jMode, 'hideout', lang),
+      _fetchJson(`${JSON_API_BASE}/${jMode}/barters`).then(r => r.data),
+      _fetchJson(`${JSON_API_BASE}/${jMode}/crafts`).then(r => r.data),
+    ])
+      .then(([itemsData, tradersData, tasksData, hideoutData, bartersData, craftsData]) => {
+        const names = {
+          tradersById: _byId(tradersData),
+          tasksById: _byId(tasksData?.tasks),
+          stationsById: _byId(hideoutData),
+        };
+        return {
+          itemsData,
+          items: Object.values(itemsData?.items ?? {}),
+          ...names,
+          acquisitions: _buildAcquisitionIndex(bartersData, craftsData, names),
+        };
+      })
+      .catch(err => {
+        delete _itemDetailCtxCache[key];
+        throw err;
+      });
+  }
+  return _itemDetailCtxCache[key];
+}
+
+// アイテム詳細系クエリの種別判定（00-constants.js の ammoPacks / armorPlates / weapons / weaponMods）
+function _detectItemQueryKind(query) {
+  if (/type:\s*ammoBox\b/.test(query)) return 'ammoBox';
+  if (/type:\s*armorPlate\b/.test(query)) return 'armorPlate';
+  if (/types:\s*\[\s*gun\b/.test(query)) return 'weapons';
+  if (/types:\s*\[\s*mods\b/.test(query)) return 'weaponMods';
+  return null;
+}
+
+// 種別ごとの変換（ctx = _loadItemDetailContext の結果）。
+// 個別の変換は未実装で、従来どおり空配列を返す（タブ側は空表示で許容）
+const _itemDetailTransforms = {
+  ammoBox: ctx => ({ items: [] }),
+  armorPlate: ctx => ({ items: [] }),
+  weapons: ctx => ({ items: [] }),
+  weaponMods: ctx => ({ items: [] }),
+};
+
+function _transformAmmo(ctx) {
+  return { ammo: [] };
+}
+
 // ── クエリ解析ヘルパー ─────────────────────────────────────────────
 
 function _detectQueryType(query) {
@@ -318,14 +444,16 @@ function _detectLang(query) {
 // ── JSON API フォールバック本体 ────────────────────────────────────
 
 async function fetchJsonApiFallback(query) {
-  // ammoPacks / armorPlates / weapons / weaponMods は fallback 中は空表示で許容
-  if (/type:\s*ammoBox|type:\s*armorPlate|types:\s*\[gun|types:\s*\[mods/.test(query)) {
-    return { items: [] };
-  }
-
   const type = _detectQueryType(query);
   const jMode = _detectGameMode(query);
   const lang = _detectLang(query);
+
+  // ammoPacks / armorPlates / weapons / weaponMods はクエリ名が items なので先に振り分ける
+  const itemKind = _detectItemQueryKind(query);
+  if (itemKind) {
+    const ctx = await _loadItemDetailContext(jMode, lang);
+    return _itemDetailTransforms[itemKind](ctx);
+  }
 
   switch (type) {
     case 'traders': {
@@ -375,7 +503,7 @@ async function fetchJsonApiFallback(query) {
     }
 
     case 'ammo':
-      return { ammo: [] };
+      return _transformAmmo(await _loadItemDetailContext(jMode, lang));
 
     default:
       throw new Error(`JSON API fallback: unsupported query type "${type}"`);
