@@ -121,6 +121,11 @@
 
 GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始める（フォールバック切替はコード変更不要）。実装を追加する際はフォールバック時の挙動も考慮すること。
 
+**アイテム詳細系クエリのフォールバック（`01-api.js`・2026-10-30）:**
+- `ammo` と、クエリ名が `items` の `ammoPacks` / `armorPlates` / `weapons` / `weaponMods` は `_detectItemQueryKind()` で振り分け、`_loadItemDetailContext(jMode, lang)` の共通データ（翻訳済み items・traders・tasks・hideout と生の barters・crafts）から `_itemDetailTransforms[種別]` / `_transformAmmo` で変換する。**個別の変換は未実装で空配列を返す**（弾薬・プレート・プリセットタブは引き続き制限表示）。
+- 共通ヘルパー: `_makeBuyFor(item, tradersById, tasksById)`（`buyFromTrader` → GraphQL 形式の `buyFor`。`noFlea` でなければ `lastLowPrice`（無ければ `avg24hPrice`）で `flea-market` を追加）、`_buildAcquisitionIndex(barters, crafts, names)`（報酬アイテムID → `bartersFor` / `craftsFor`）。
+- `_fetchTranslated` は翻訳適用済みの結果もキャッシュする（items 約17MB の翻訳を何度も走らせない）。ダウンロードは `_fetchJson`、共通データは `_itemDetailCtxCache` でそれぞれ1回。
+
 **モードと API の gameMode の対応（2026-08-30 調査）:**
 
 | アプリのモード | 取得するデータ |
