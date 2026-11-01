@@ -16,6 +16,11 @@
                     </label>
                   ))}
                 </div>
+                {isSeasonMode(activeMode) && (
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+                    {getModeLabel(activeMode)} ではタスク等をシーズン用データ（pvp-season）から取得します（フリマ価格履歴はこの設定に従います）
+                  </div>
+                )}
               </div>
               <div>
                 <div className="setting-label">購入エディション</div>

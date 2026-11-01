@@ -187,8 +187,9 @@ const QUERIES = {
       experience
     }
   }`,
-  hideout: (lang) => `{
-    hideoutStations(lang: ${lang}) {
+  // gameMode はシーズン（pvp-season）のときだけ渡す（JSON API フォールバックの取得先切替用）
+  hideout: (lang, gameMode) => `{
+    hideoutStations(lang: ${lang}${gameMode ? `, gameMode: ${gameMode}` : ''}) {
       id name
       levels {
         level
