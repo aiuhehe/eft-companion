@@ -119,18 +119,29 @@ function App() {
     if (historyOpenId) loadItemHistory(historyOpenId);
   }, [activeTab, watchBoardIds, loadItemHistory, lastLoaded, historyOpenId]);
 
+  // イベントタブを開いた / APIデータ再取得時に、イベントアイテム（EVENT_ITEMS）の価格推移を取得
+  useEffect(() => {
+    if (activeTab !== 'event') return;
+    EVENT_ITEMS.forEach(e => loadItemHistory(e.id));
+  }, [activeTab, loadItemHistory, lastLoaded]);
+
   // ===== イベント（Blackout）: 独自完了フラグ =====
   // API未登録の間は BLACKOUT_TASKS_STATIC のハードコードデータで表示し、
-  // localStorage "eft_blackout_v1" でキー単位の完了状態を管理する。
+  // localStorage "eft_blackout_v1__{mode}" でキー単位の完了状態をモードごとに管理する。
+  // 旧・全モード共通キー "eft_blackout_v1" は PvP のデータとして引き継ぐ（initModeSystem と同じ扱い・旧キーは残す）。
   // API に登録された後は apiId が埋まり completedTaskIds（共有）側で管理される。
   const [blackoutDone, setBlackoutDone] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('eft_blackout_v1') || '{}'); } catch { return {}; }
+    try {
+      const own = localStorage.getItem(modeKey('eft_blackout_v1'));
+      const legacy = getActiveMode() === 'pvp' ? localStorage.getItem('eft_blackout_v1') : null;
+      return JSON.parse(own ?? legacy ?? '{}');
+    } catch { return {}; }
   });
   const toggleBlackoutDone = useCallback((key, apiId) => {
     if (apiId) { toggleComplete(apiId); return; }
     setBlackoutDone(prev => {
       const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem('eft_blackout_v1', JSON.stringify(next));
+      localStorage.setItem(modeKey('eft_blackout_v1'), JSON.stringify(next));
       return next;
     });
   }, [toggleComplete]);
@@ -151,6 +162,51 @@ function App() {
       })
     );
   }, [apiData.barters, apiData.items]);
+
+  // ===== イベント: イベントアイテム（EVENT_ITEMS）を使う／作るバーター =====
+  // json.tarkov.dev の barters は同じ内容が重複して入っていることがあるため、
+  // トレーダー・LL・材料・報酬が同じものは1件にまとめる。
+  // prices は「買うときの値段」: フリマ24h平均（無ければ24h最安）とトレーダーの最安購入価格の安い方
+  // （ゲーム内のフリマにはトレーダー販売品も並ぶため）。フリマに出品できない物はトレーダー購入価格のみ。
+  // priceSources はトレーダー購入価格を使ったアイテムだけ { トレーダー名, LL }（表で出典を添える）。
+  const eventItemBarters = useMemo(() => {
+    const ids = new Set(EVENT_ITEMS.map(e => e.id));
+    const seen = new Set();
+    const barters = apiData.barters.filter(b => {
+      const touches = [...(b.requiredItems || []), ...(b.rewardItems || [])].some(r => ids.has(r.item?.id));
+      if (!touches) return false;
+      const sig = [b.trader?.id, b.level,
+        ...(b.requiredItems || []).map(r => `${r.item?.id}x${r.count}`),
+        ...(b.rewardItems || []).map(r => `>${r.item?.id}x${r.count}`)].join('|');
+      if (seen.has(sig)) return false;
+      seen.add(sig);
+      return true;
+    });
+    const needed = new Set([...ids, ...barters.flatMap(b => [...(b.requiredItems || []), ...(b.rewardItems || [])].map(r => r.item?.id))]);
+    const prices = {};
+    const priceSources = {};
+    apiData.items.forEach(i => {
+      if (!needed.has(i.id)) return;
+      const flea = i.avg24hPrice || i.low24hPrice || 0;
+      const best = (i.buyFor || [])
+        .filter(b => b.vendor?.trader && b.priceRUB > 0)
+        .sort((a, b) => a.priceRUB - b.priceRUB)[0];
+      if (best && (!flea || best.priceRUB < flea)) {
+        prices[i.id] = best.priceRUB;
+        priceSources[i.id] = { trader: best.vendor.trader.name, level: best.vendor.minTraderLevel || 1 };
+      } else {
+        prices[i.id] = flea;
+      }
+    });
+    return { barters, prices, priceSources };
+  }, [apiData.barters, apiData.items]);
+  // イベントタスク欄（ツリー・準備・詳細）の開閉。null = 自動（タスクが全完了なら閉じる）
+  const [eventTasksOpen, setEventTasksOpen] = useState(null);
+  // イベントタスク詳細: 完了・選ばなかった陣営のタスクも表示するか / そのうち中身を開いているタスク key
+  const [showSettledEventTasks, setShowSettledEventTasks] = useState(false);
+  const [openSettledEventTasks, setOpenSettledEventTasks] = useState([]);
+  // イベントアイテムの使い道: 材料にするイベントアイテムでの絞り込み（'all' かアイテムID）
+  const [eventUseFilter, setEventUseFilter] = useState('all');
 
   // historyCacheを過去N日分に切り出す（必要アイテムは7日分表示）
   const sliceDays = useCallback((hc, days) => (

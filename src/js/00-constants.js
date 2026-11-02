@@ -125,6 +125,7 @@ const QUERIES = {
     barters(gameMode: ${gameMode}, lang: ${lang}) {
       trader { id name }
       level
+      buyLimit
       requiredItems {
         item { id name shortName iconLink }
         count

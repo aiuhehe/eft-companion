@@ -248,10 +248,14 @@ const BLACKOUT_TASKS_STATIC = [
     ],
     experience: 44000,
     euros: 2800,
+    tips: [
+      '報酬はゲーム内で確認済み（ユーロはボーナス込みの表示で 3,267）',
+      '完了でデイリータスクが +2（報酬に感染組織のサンプル）',
+    ],
     rewardItems: [
       { id: '5910968f86f77425cf569c32', name: '武器修理キット', count: 1 },
       { id: '5b44cd8b86f774503d30cba2', name: 'IOTV Gen4（Full Protection Kit, MultiCam）', count: 1 },
-      { id: '6acc4af5ada0d6309902b049', name: '感染組織サンプル', count: 1 },
+      { id: '6acc4af5ada0d6309902b049', name: '感染組織サンプル', count: 2 },
       { id: '5b7c710788a4506dec015957', name: 'Lucky Scav Junk box', count: 1, unlock: { trader: 'Therapist', level: 1 } },
       { id: '5aafbcd986f7745e590fff23', name: 'Medicine case', count: 1, unlock: { trader: 'Therapist', level: 2 } },
     ],
@@ -292,11 +296,13 @@ const BLACKOUT_TASKS_STATIC = [
       { type: 'findItem', description: 'TG-Vi-24 ワクチン試作品（B.1.2 株）を2個入手する', itemId: '6acc4c757587fb38c508c5fa', itemName: 'TG-Vi-24 ワクチン試作品（B.1.2 株）', count: 2 },
       { type: 'giveItem', description: 'TG-Vi-24 ワクチン試作品（B.1.2 株）を2個納品する', itemId: '6acc4c757587fb38c508c5fa', itemName: 'TG-Vi-24 ワクチン試作品（B.1.2 株）', count: 2 },
     ],
-    tips: [
-      '報酬は未確認（情報源に未掲載）',
+    experience: 34000,
+    euros: 1800,
+    rewardItems: [
+      { id: '707265736574000000000088', name: 'AA-12 Gen2', count: 1, unlock: { trader: 'Skier', level: 1 } },
+      { id: '70726573657400000000007d', name: 'Sako TRG M10', count: 1, unlock: { trader: 'Skier', level: 2 } },
+      { id: '59faff1d86f7746c51718c9c', name: 'ビットコインの金貨', count: 1, unlock: { trader: 'Skier', level: 3 } },
     ],
-    experience: 0,
-    rewardItems: [],
   },
   {
     key: 'hw26_enemy_of_enemy',
@@ -311,11 +317,14 @@ const BLACKOUT_TASKS_STATIC = [
       { type: 'giveItem', description: '感染データのフォルダを Therapist に渡す（「敵の敵 — 合意」の納品で完了）', questItemName: '感染データのフォルダ' },
     ],
     tips: [
-      'フォルダは「偶然か？」の完了後に Skier からメッセージで届く',
-      '報酬は未確認（情報源に未掲載）',
+      'フォルダ（TerraGroup の感染拡大に関するデータのフォルダ）はこのタスクの初期装備として受け取る',
+      '報酬はゲーム内で確認済み（ユーロはボーナス込みの表示で 2,178）',
     ],
-    experience: 0,
-    rewardItems: [],
+    experience: 24000,
+    euros: 1800,
+    rewardItems: [
+      { id: '5ab8e79e86f7742d8b372e78', name: 'BNTI Gzhel-K', count: 3 },
+    ],
   },
   {
     key: 'hw26_enemy_agreement',
@@ -329,11 +338,22 @@ const BLACKOUT_TASKS_STATIC = [
     objectives: [
       { type: 'giveItem', description: 'Skier から受け取ったデータのフォルダを Therapist に納品する', questItemName: '感染データのフォルダ' },
     ],
-    tips: [
-      '報酬は未確認（情報源に未掲載）',
+    experience: 18000,
+    rubles: 150000,
+    rewardItems: [
+      { id: '6acc4e8fada0d6309902b04d', name: 'RDA-78 ワクチン', count: 1 },
+      { id: '6acc4c757587fb38c508c5fa', name: 'TG-Vi-24 ワクチンプロトタイプ（B.1.2 株）', count: 2 },
+      { id: '6acc4e8fada0d6309902b04d', name: 'RDA-78 ワクチン', count: 1, unlock: { trader: 'Therapist', level: 1 } },
+      { id: '70726573657400000000007b', name: 'Mk-18 .338 LM', count: 1, unlock: { trader: 'Jaeger', level: 1 } },
+      { id: '5c110624d174af029e69734c', name: 'T-7 サーマルゴーグル', count: 1, unlock: { trader: 'Jaeger', level: 2 } },
+      { id: '64cf7b7d8b48ea38c5030f65', name: 'PKP', count: 1, unlock: { trader: 'Prapor', level: 1 } },
+      { id: '5d80c60f86f77440373c4ece', name: 'RB-BK の鍵', count: 1, unlock: { trader: 'Prapor', level: 2 } },
+      { id: '5a1eaa87fcdbcb001865f75e', name: 'Trijicon REAP-IR', count: 1, unlock: { trader: 'Skier', level: 1 } },
+      { id: '59fb023c86f7746d0d4b423c', name: 'ウェポンケース', count: 1, unlock: { trader: 'Skier', level: 2 } },
+      { id: '65766a7b86f11bca4106d3c3', name: 'BNTI Zhuk（EMR）', count: 1, unlock: { trader: 'Ragman', level: 1 } },
+      { id: '629744d002667c48a467e9f9', name: 'M32A1 MSGL', count: 1, unlock: { trader: 'Peacekeeper', level: 1 } },
+      { id: '5c0a840b86f7742ffa4f2482', name: 'THICC アイテムケース', count: 1, unlock: { trader: 'Peacekeeper', level: 2 } },
     ],
-    experience: 0,
-    rewardItems: [],
   },
   {
     key: 'hw26_blind_enemy',
@@ -345,14 +365,21 @@ const BLACKOUT_TASKS_STATIC = [
     prereqs: ['hw26_enemy_of_enemy'],
     lore: 'Skier 側の最終タスク。完了すると Skier 側の実績が得られる（実績はどちらか一方の陣営のみ）。',
     objectives: [
-      { type: 'giveItem', description: '指定のワクチンを納品する（詳細未確認）' },
-      { type: 'shoot', description: 'Woods・Customs・Lighthouse・Reserve・Shoreline の監視カメラを破壊する（詳細未確認）', maps: ['Woods', 'Customs', 'Lighthouse', 'Reserve', 'Shoreline'] },
+      { type: 'giveItem', description: 'RDA-78 ワクチンを納品する', itemId: '6acc4e8fada0d6309902b04d', itemName: 'RDA-78 ワクチン', count: 1 },
+      { type: 'shoot', description: 'Woods の列車基地で監視カメラを2台破壊する', maps: ['Woods'], count: 2 },
+      { type: 'shoot', description: 'Customs の寮で監視カメラを3台破壊する', maps: ['Customs'], count: 3 },
+      { type: 'shoot', description: 'Lighthouse の浄水場で監視カメラを3台破壊する', maps: ['Lighthouse'], count: 3 },
+      { type: 'shoot', description: 'Reserve の列車基地で監視カメラを3台破壊する', maps: ['Reserve'], count: 3 },
+      { type: 'shoot', description: 'Shoreline の保養所で監視カメラを3台破壊する', maps: ['Shoreline'], count: 3 },
     ],
     tips: [
-      '目標は1つの情報源のみ・報酬は未確認',
+      'RDA-78 ワクチンは「敵の敵 — 合意」の報酬で1個もらえる',
     ],
-    experience: 0,
-    rewardItems: [],
+    experience: 60000,
+    euros: 4000,
+    rewardItems: [
+      { id: '59fb023c86f7746d0d4b423c', name: 'ウェポンケース', count: 1 },
+    ],
   },
   {
     key: 'hw26_high_risk',
@@ -369,11 +396,18 @@ const BLACKOUT_TASKS_STATIC = [
     ],
     tips: [
       '数をこなすので Factory でショットガンを使うのが楽',
+      '完了でデイリータスクが +2（報酬に TG-Vi-24 ワクチンプロトタイプ）',
     ],
-    experience: 44000,
-    rubles: 350000,
+    experience: 41000,
+    rubles: 300000,
     rewardItems: [
       { id: '5c0e530286f7747fa1419862', name: 'Propital', count: 3 },
+      { id: '5c0e533786f7747fa23f4d47', name: 'Zagustin', count: 3 },
+      { id: '6acc4c757587fb38c508c5fa', name: 'TG-Vi-24 ワクチンプロトタイプ（B.1.2 株）', count: 2 },
+      { id: '5d1b5e94d7ad1a2b865a96b0', name: 'FLIR RS-32', count: 1, unlock: { trader: 'Jaeger', level: 1 } },
+      { id: '67a328326e3613a197068d05', name: 'RShG-2', count: 1, unlock: { trader: 'Prapor', level: 1 } },
+      { id: '707265736574000000000086', name: 'DevTac Ronin', count: 1, unlock: { trader: 'Ragman', level: 1 } },
+      { id: '657eb3773271d8578610fe28', name: 'MCX-SPEAR', count: 1, unlock: { trader: 'Peacekeeper', level: 1 } },
     ],
   },
   {
@@ -395,7 +429,7 @@ const BLACKOUT_TASKS_STATIC = [
       'グレネードが足りなくなったら Therapist のバーター（Black Division のガスグレネードか血液サンプルと交換）で入手できる',
     ],
     experience: 42000,
-    rubles: 350000,
+    rubles: 300000,
     rewardItems: [
       { id: '590c657e86f77412b013051d', name: 'Grizzly 医療キット', count: 5 },
     ],
@@ -416,8 +450,13 @@ const BLACKOUT_TASKS_STATIC = [
       '組織サンプルは「大義のために — 合意」の報酬かフリーマーケットで入手',
     ],
     experience: 34000,
-    rubles: 175000,
-    rewardItems: [],
+    rubles: 150000,
+    rewardItems: [
+      { id: '5b7c710788a4506dec015957', name: 'Lucky Scav Junk box', count: 1, unlock: { trader: 'Therapist', level: 1 } },
+      { id: '5aafbcd986f7745e590fff23', name: 'Medicine case', count: 1, unlock: { trader: 'Therapist', level: 2 } },
+      { id: '5c1d0dc586f7744baf2e7b79', name: 'Labs キーカード（グリーン）', count: 1, unlock: { trader: 'Therapist', level: 3 } },
+      { id: '59fb042886f7746c5005a7b2', name: 'Item case', count: 1, unlock: { trader: 'Therapist', level: 4 } },
+    ],
   },
   {
     key: 'hw26_greater_good',
@@ -475,13 +514,23 @@ const BLACKOUT_TASKS_STATIC = [
     tips: [
       'Tagilla は Infected Factory・Infected Lab の両方に出る（やや弱体化版）',
       'ガス対策の装備と高威力のスラッグ弾ショットガンがおすすめ',
-      'ルーブル報酬は情報源で 520,000 / 530,000 と食い違うため未記載',
     ],
     experience: 60000,
+    rubles: 450000,
     rewardItems: [
       { id: '59fb042886f7746c5005a7b2', name: 'Item case', count: 1 },
       { id: '6acc4e8fada0d6309902b04d', name: 'RDA-78 ワクチン', count: 1 },
-      { id: '6acc4c757587fb38c508c5fa', name: 'TG-Vi-24 ワクチン試作品（B.1.2 株）', count: 1 },
+      { id: '6acc4c757587fb38c508c5fa', name: 'TG-Vi-24 ワクチン試作品（B.1.2 株）', count: 2 },
+      { id: '6acc4e8fada0d6309902b04d', name: 'RDA-78 ワクチン', count: 1, unlock: { trader: 'Therapist', level: 1 } },
+      { id: '70726573657400000000007b', name: 'Mk-18 .338 LM', count: 1, unlock: { trader: 'Jaeger', level: 1 } },
+      { id: '5c110624d174af029e69734c', name: 'T-7 サーマルゴーグル', count: 1, unlock: { trader: 'Jaeger', level: 2 } },
+      { id: '64cf7b7d8b48ea38c5030f65', name: 'PKP', count: 1, unlock: { trader: 'Prapor', level: 1 } },
+      { id: '5d80c60f86f77440373c4ece', name: 'RB-BK の鍵', count: 1, unlock: { trader: 'Prapor', level: 2 } },
+      { id: '5a1eaa87fcdbcb001865f75e', name: 'Trijicon REAP-IR', count: 1, unlock: { trader: 'Skier', level: 1 } },
+      { id: '59fb023c86f7746d0d4b423c', name: 'ウェポンケース', count: 1, unlock: { trader: 'Skier', level: 2 } },
+      { id: '65766a7b86f11bca4106d3c3', name: 'BNTI Zhuk（EMR）', count: 1, unlock: { trader: 'Ragman', level: 1 } },
+      { id: '629744d002667c48a467e9f9', name: 'M32A1 MSGL', count: 1, unlock: { trader: 'Peacekeeper', level: 1 } },
+      { id: '5c0a840b86f7742ffa4f2482', name: 'THICC アイテムケース', count: 1, unlock: { trader: 'Peacekeeper', level: 2 } },
     ],
   },
 ];
@@ -501,16 +550,79 @@ const EVENT_FLOW = [
 ];
 
 // 事前に用意しておくと詰まらないもの（itemIds はアイコン表示用。複数なら代表例を並べる）
+// branches: 必要になる陣営（'skier' / 'therapist'、両方なら両方）。省略 = 共通タスクで使う
 const EVENT_PREP = [
   { name: 'Medical tools（医療器具）', note: '追加検査で血液採取に使用（消費）', itemIds: ['619cc01e0a7c3a1a2731940c'] },
-  { name: 'Customs 寮 105号室の鍵', note: '思わぬ助け（Skier 側）でワクチンを隠す', itemIds: ['591382d986f774465a6413a7'] },
-  { name: 'Collector map か Car keys', note: 'Infected Lab の脱出に必要（Lab 内で入手可）', itemIds: ['6ad5f06c0d239d9ef60e7670', '6ad5f141e8c146f24d0ea9b6'] },
-  { name: '重度出血を止められる医療キット 7個（FIR）', note: '隔離の強化。Skier 側なら5個（AFAK・IFAK・Grizzly・Salewa など）', itemIds: ['60098ad7c2240c0fe85c570a', '590c678286f77426c9660122', '590c657e86f77412b013051d', '544fb45d4bdc2dee738b4568'] },
-  { name: '医療用バーム 3個・手術キット 3個（FIR）', note: '隔離の強化。Skier 側なら各2個', itemIds: ['5751a89d24597722aa0e8db0', '5d02778e86f774203e7dedbe', '5d02797c86f774203f38e30a'] },
-  { name: '2,000 ドル', note: '新たなワクチン（分岐①で Skier 側を選んだ場合）', itemIds: ['5696686a4bdc2da3298b456a'] },
-  { name: 'ガスマスクなどのガス対策装備', note: '最初の成果・最後のひと押し（Therapist 側）で試作ガスグレネードを使う' },
-  { name: '感染組織サンプル 2個', note: '敵を知る（Therapist 側）。「大義のために — 合意」の報酬かフリマで入手', itemIds: ['6acc4af5ada0d6309902b049'] },
+  { name: 'Customs 寮 105号室の鍵', note: '思わぬ助け（分岐① Skier 側）でワクチンを隠す', itemIds: ['591382d986f774465a6413a7'], branches: ['skier'] },
+  { name: 'Collector map か Car keys', note: 'Infected Lab の脱出に必要（Lab 内で入手可）。最大の防御（任意）・新たなワクチン（分岐②）で使う', itemIds: ['6ad5f06c0d239d9ef60e7670', '6ad5f141e8c146f24d0ea9b6'] },
+  { name: '重度出血を止められる医療キット 7個（FIR）', note: '隔離の強化（分岐② Skier 側）。分岐①で Skier 側を選んでいれば5個（AFAK・IFAK・Grizzly・Salewa など）', itemIds: ['60098ad7c2240c0fe85c570a', '590c678286f77426c9660122', '590c657e86f77412b013051d', '544fb45d4bdc2dee738b4568'], branches: ['skier'] },
+  { name: '医療用バーム 3個・手術キット 3個（FIR）', note: '隔離の強化（分岐② Skier 側）。分岐①で Skier 側を選んでいれば各2個', itemIds: ['5751a89d24597722aa0e8db0', '5d02778e86f774203e7dedbe', '5d02797c86f774203f38e30a'], branches: ['skier'] },
+  { name: '2,000 ドル', note: '新たなワクチン（分岐② Therapist 側）。分岐①で Skier 側を選んでいた場合のみ', itemIds: ['5696686a4bdc2da3298b456a'], branches: ['therapist'] },
+  { name: 'ガスマスクなどのガス対策装備', note: '最初の成果・最後のひと押しで試作ガスグレネードを使う', branches: ['therapist'] },
+  { name: '感染組織サンプル 2個', note: '敵を知るで納品。「大義のために — 合意」の報酬かフリマで入手', itemIds: ['6acc4af5ada0d6309902b049'], branches: ['therapist'] },
+  { name: 'RDA-78 ワクチン 1個', note: '敵の目を潰せで納品。「敵の敵 — 合意」の報酬でもらえる', itemIds: ['6acc4e8fada0d6309902b04d'], branches: ['skier'] },
 ];
+
+// イベントアイテム（イベントタブ「イベントアイテムの使い道」）。並び順 = 入手方法カード・絞り込みボタンの並び
+const EVENT_ITEMS = [
+  { id: '6acc4e8fada0d6309902b04d', name: 'RDA-78 ワクチン' },
+  { id: '6acc4c757587fb38c508c5fa', name: 'TG-Vi-24 ワクチンプロトタイプ（B.1.2 株）' },
+  { id: '6acc4af5ada0d6309902b049', name: '感染組織のサンプル' },
+  { id: '6acc4988059559342f0830d8', name: '血液サンプル' },
+];
+
+// イベントアイテムの入手方法（イベントタブ「入手方法と相場」）。表示順: text → items（アイテム画像＋個数）→ afterItems → tasks（タスク key・陣営色のチップ）→ after
+// 情報源: Fandom Wiki 各アイテム・タスクページ（2026-11-02 時点）
+const EVENT_ITEM_SOURCES = {
+  '6acc4e8fada0d6309902b04d': [
+    { kind: 'barter', text: 'Therapist LL1 のバーター', items: [{ id: '6acc4988059559342f0830d8', count: 3 }, { id: '6acc4af5ada0d6309902b049', count: 1 }, { id: '6acc4c757587fb38c508c5fa', count: 1 }], afterItems: '解放:', tasks: ['hw26_enemy_agreement', 'hw26_final_push'] },
+    { kind: 'task', text: 'タスク報酬 1個:', tasks: ['hw26_enemy_agreement', 'hw26_final_push'] },
+    { kind: 'flea', text: 'フリーマーケット' },
+  ],
+  '6acc4c757587fb38c508c5fa': [
+    { kind: 'task', text: 'タスク報酬 2個:', tasks: ['hw26_enemy_agreement', 'hw26_high_risk', 'hw26_final_push'] },
+    { kind: 'daily', text: 'デイリータスクの報酬（', tasks: ['hw26_high_risk'], after: ' タスク完了で +2）' },
+    { kind: 'flea', text: 'フリーマーケット' },
+  ],
+  '6acc4af5ada0d6309902b049': [
+    { kind: 'task', text: 'タスク報酬 2個:', tasks: ['hw26_danger_zone', 'hw26_greater_good_agreement'] },
+    { kind: 'daily', text: 'デイリータスクの報酬（', tasks: ['hw26_danger_zone'], after: ' タスク完了で +2）' },
+    { kind: 'flea', text: 'フリーマーケット' },
+  ],
+  '6acc4988059559342f0830d8': [
+    { kind: 'raid', text: 'Infected Lab / Infected Factory の防護服の科学者の死体を医療器具（消費）で開けて採取（手順は', tasks: ['hw26_followup'], after: '）' },
+    { kind: 'flea', text: 'フリーマーケット（タスク報酬での入手はなし）' },
+  ],
+};
+const EVENT_SOURCE_ICON = { barter: 'shopping-cart', task: 'clipboard-list', daily: 'calendar', raid: 'map-pin', flea: 'trending-up' };
+
+// イベントバーターの解放タスク（報酬アイテムID → どれか1つ完了で解放されるタスク key）。情報源は EVENT_ITEM_SOURCES と同じ
+// 記載のないバーター（ガスグレネード等）は解放条件未確認として表示しない
+const EVENT_BARTER_UNLOCKS = (() => {
+  const m = {};
+  const add = (keys, ids) => ids.forEach(id => { m[id] = keys; });
+  add(['hw26_danger_zone', 'hw26_studying_enemy'], ['5b7c710788a4506dec015957', '5aafbcd986f7745e590fff23']); // Lucky Scav ジャンクボックス・医薬品ケース
+  add(['hw26_studying_enemy'], ['5c1d0dc586f7744baf2e7b79', '59fb042886f7746c5005a7b2']); // Labs キーカード（グリーン）・アイテムケース
+  add(['hw26_prototyping'], ['707265736574000000000088', '70726573657400000000007d', '59faff1d86f7746c51718c9c']); // AA-12・TRG M10・ビットコイン
+  add(['hw26_high_risk'], ['5d1b5e94d7ad1a2b865a96b0', '67a328326e3613a197068d05', '707265736574000000000086', '657eb3773271d8578610fe28']); // FLIR・RShG-2・Ronin・MCX-SPEAR
+  add(['hw26_enemy_agreement', 'hw26_final_push'], [
+    '6acc4e8fada0d6309902b04d', '70726573657400000000007b', '5c110624d174af029e69734c', '64cf7b7d8b48ea38c5030f65', '5d80c60f86f77440373c4ece',
+    '5a1eaa87fcdbcb001865f75e', '59fb023c86f7746d0d4b423c', '65766a7b86f11bca4106d3c3', '629744d002667c48a467e9f9', '5c0a840b86f7742ffa4f2482',
+  ]); // RDA-78・Mk-18・T-7・PKP・RB-BK・REAP-IR・ウェポンケース・Zhuk・M32A1・THICC
+  return m;
+})();
+
+// tarkov.dev に画像が未登録（unknown-item）のイベントアイテム → Fandom Wiki のアイコン画像（64px）
+// tarkov.dev 側に画像が入ればそちらが優先される（itemIcon 参照）
+const FANDOM_IMG = 'https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/';
+const EVENT_ITEM_ICONS = {
+  '6acc4e8fada0d6309902b04d': FANDOM_IMG + '2/25/RDA-78_vaccine_%28Replicative_DNA_Attenuator%29_icon.png/revision/latest',
+  '6acc4c757587fb38c508c5fa': FANDOM_IMG + '6/6b/TG-Vi-24_vaccine_prototype_%28B.1.2_strain%29_icon.png/revision/latest',
+  '6acc4af5ada0d6309902b049': FANDOM_IMG + 'f/f2/Infected_tissue_sample_icon.png/revision/latest',
+  '6acc4988059559342f0830d8': FANDOM_IMG + '7/7f/Blood_sample_%28Halloween_2026%29_icon.png/revision/latest',
+  '6a9854955358fa10380b8509': FANDOM_IMG + 'c/c0/Model_8230_CS_gas_grenade_%28RDA-78%29_icon.png/revision/latest',
+  '6a9854e0788619fe8502a6b7': FANDOM_IMG + 'b/b0/Model_8230_CS_gas_grenade_%28RDA-68%29_icon.png/revision/latest',
+};
 
 // 通貨報酬 → tarkov.dev のアイテムID（カスタムタスクの報酬に変換するとき使う）
 const CURRENCY_ITEM_IDS = { rubles: '5449016a4bdc2d6f028b456f', euros: '569668774bdc2da2298b4568', dollars: '5696686a4bdc2da3298b456a' };
