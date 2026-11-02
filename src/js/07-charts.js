@@ -150,6 +150,85 @@ function FleaHistoryChart({ points, loading, error, showPeriodSelector }) {
   );
 }
 
+// カード内に収まる小型のフリマ価格推移（平均・最安の2本線）。イベントタブの入手方法カードで使用。
+// points: [{ t, price, priceMin }]（表示したい期間に切り出し済みのもの）
+function MiniFleaChart({ points, loading, error }) {
+  const svgRef = useRef(null);
+  const [hover, setHover] = useState(null); // { idx, leftPx }
+  const fmtTime = t => new Date(t).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const fmtDay = t => new Date(t).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+
+  if (loading && !(points && points.length)) return (
+    <div className="mini-chart-msg"><Icon name="refresh" size={12} color="var(--text-dim)" style={{ animation: 'spin 1s linear infinite' }} /> 価格推移を取得中…</div>
+  );
+  if (error && !(points && points.length)) return <div className="mini-chart-msg" style={{ color: 'var(--danger-text)' }}>価格推移の取得に失敗しました</div>;
+  if (!points || points.length < 2) return <div className="mini-chart-msg">価格推移のデータがありません</div>;
+
+  const W = 320, H = 96;
+  const m = { top: 8, right: 6, bottom: 16, left: 6 };
+  const plotW = W - m.left - m.right, plotH = H - m.top - m.bottom;
+  const vals = points.flatMap(p => [p.price, p.priceMin]).filter(Boolean);
+  const hi = Math.max(...vals), lo = Math.min(...vals);
+  // 出始めの極端な高値で残りが平らになるのを防ぐため、縦軸の上限は平均価格の中央値の 2.5 倍まで（超えた点は上端に張り付け）
+  const avgs = points.map(p => p.price).filter(Boolean).sort((a, b) => a - b);
+  const median = avgs.length ? avgs[Math.floor(avgs.length / 2)] : hi;
+  const capped = hi > median * 2.5;
+  let yMin = lo, yMax = capped ? median * 2.5 : hi;
+  if (yMin === yMax) { yMin *= 0.95; yMax = yMax * 1.05 || 1; }
+  const xMin = points[0].t, xSpan = (points[points.length - 1].t - xMin) || 1;
+  const sx = t => m.left + ((t - xMin) / xSpan) * plotW;
+  const sy = v => m.top + (1 - (Math.min(v, yMax) - yMin) / (yMax - yMin)) * plotH;
+  const lineFor = key => points.filter(p => p[key]).map(p => `${sx(p.t).toFixed(1)},${sy(p[key]).toFixed(1)}`).join(' ');
+
+  const handleMove = e => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const xv = ((e.clientX - rect.left) / rect.width) * W;
+    let best = 0, bd = Infinity;
+    points.forEach((p, i) => { const d = Math.abs(sx(p.t) - xv); if (d < bd) { bd = d; best = i; } });
+    const px = (sx(points[best].t) / W) * rect.width;
+    setHover({ idx: best, leftPx: Math.max(60, Math.min(rect.width - 60, px)) });
+  };
+  const hp = hover ? points[hover.idx] : null;
+
+  return (
+    <div className="mini-chart">
+      <div className="mini-chart-range">
+        <span>高 {fmtNum(Math.round(hi))}{capped && <span title={`縦軸は ${fmtNum(Math.round(yMax))} までで、それより高い点は上端に表示`}>（上限 {fmtNum(Math.round(yMax))} で表示）</span>}</span>
+        <span>安 {fmtNum(Math.round(lo))}</span>
+      </div>
+      <div style={{ position: 'relative' }}>
+        <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', cursor: 'crosshair' }}
+          onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
+          <line x1={m.left} y1={H - m.bottom} x2={W - m.right} y2={H - m.bottom} stroke="var(--border)" strokeWidth="1" />
+          <polyline points={lineFor('priceMin')} fill="none" stroke="var(--state-ok)" strokeWidth="1.5" />
+          <polyline points={lineFor('price')} fill="none" stroke="var(--accent)" strokeWidth="1.8" />
+          <text x={m.left} y={H - 3} fontSize="10" fill="var(--text-dim)">{fmtDay(points[0].t)}</text>
+          <text x={W - m.right} y={H - 3} fontSize="10" fill="var(--text-dim)" textAnchor="end">{fmtDay(points[points.length - 1].t)}</text>
+          {hp && (
+            <g style={{ pointerEvents: 'none' }}>
+              <line x1={sx(hp.t)} y1={m.top} x2={sx(hp.t)} y2={H - m.bottom} stroke="var(--text-secondary)" strokeWidth="1" strokeDasharray="3 3" />
+              {hp.priceMin ? <circle cx={sx(hp.t)} cy={sy(hp.priceMin)} r="3" fill="var(--state-ok)" /> : null}
+              {hp.price ? <circle cx={sx(hp.t)} cy={sy(hp.price)} r="3" fill="var(--accent)" /> : null}
+            </g>
+          )}
+        </svg>
+        {hp && (
+          <div className="mini-chart-tip" style={{ left: hover.leftPx }}>
+            <div style={{ color: 'var(--text-dim)' }}>{fmtTime(hp.t)}</div>
+            <div style={{ color: 'var(--accent)' }}>平均 {fmt(hp.price)}</div>
+            <div style={{ color: 'var(--state-ok-text)' }}>最安 {fmt(hp.priceMin)}</div>
+          </div>
+        )}
+      </div>
+      <div className="mini-chart-legend">
+        <span><i style={{ background: 'var(--accent)' }} /> 平均</span>
+        <span><i style={{ background: 'var(--state-ok)' }} /> 最安</span>
+      </div>
+    </div>
+  );
+}
+
 // ================== KEYS (鍵一覧) ==================
 // 鍵 → 利用可能マップの対応。tarkov.dev API はキー→マップの構造化データを持たないため、
 // 英語名(nameEn)のキーワードで推定する（最善努力・完全ではない）。複数マッチ可。未マッチは「その他」。

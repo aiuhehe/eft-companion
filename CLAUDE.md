@@ -154,7 +154,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `eft_guides_v1` | ガイドビューアのチェック済みステップ（モード非依存）|
 | `eft_custom_tasks_v1` | 出撃準備タブで手動登録したカスタムタスク（全モード共通）|
 | `eft_presets_v1` / `eft_presets_standard` | 武器プリセット比較の登録プリセット / 基準プリセットID |
-| `eft_blackout_v1` | イベントタスクの独自完了フラグ（キー名は歴史的経緯・全イベント共通）|
+| `eft_blackout_v1` | 旧・イベントタスク完了フラグ（全モード共通だった頃のもの）。PvP モードで `eft_blackout_v1__pvp` が無いときの読み込み元としてのみ参照 |
 | `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Seasonは `eft_manual_unlocks_v1__season_N` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
 | `eft_maps_v1` | マップ画像メタデータ（`{ [mapName]: { file, width, height } }`）— 自動取得・グローバル |
 | `eft_task_pins_v1` | タスク目標のピン座標配列（`[{ id, mapName, taskId, objectiveId, x, y, memo?, requiredItems?, memoImages? }]`）— グローバル。`memoImages` は詳細位置画像 `[{ id, name(省略名), dataUrl(JPEG) }]` |
@@ -172,6 +172,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `eft_plan_v1` | プランアイテム `[{ id, type, ... }]` |
 | `eft_task_tabs_v1` | プロジェクトタブ `[{ id, name, color, goalTaskId }]` |
 | `eft_raid_obj_checked_v1` | 出撃準備タブの目標ごとのチェック状態 |
+| `eft_blackout_v1` | イベントタスクの独自完了フラグ（キー名は歴史的経緯・全イベント共通の入れ物）。旧グローバルキーは PvP へ引き継ぎ |
 | `eft_task_tags_v1` | 旧タグ機能（**廃止**・`eft_task_tabs_v1` への移行元としてのみ参照）|
 
 ### モードシステム設計（2026-07-04）
@@ -326,6 +327,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `book` | 本 |
 | `x` | 閉じる・削除 |
 | `arrow-right` | 右矢印 |
+| `arrow-left` | 左矢印（イベントの使い道表「もらえるもの ← 必要なもの」） |
 | `anchor` | 固定 |
 | `sort` | ソート |
 | `palette` | パレット・テーマ |

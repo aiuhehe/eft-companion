@@ -279,6 +279,7 @@ function _transformBarters(data, itemsMap) {
   const barters = Object.values(data || {}).map(b => ({
     trader: { id: b.trader, name: TRADER_NAMES[b.trader] || b.trader },
     level: b.minTraderLevel || 1,
+    buyLimit: b.buyLimit || 0,
     requiredItems: (b.requiredItems || []).map(ri => ({
       item: _makeItemRef(ri.item, itemsMap),
       count: ri.count || 1,
