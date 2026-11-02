@@ -412,17 +412,71 @@ function _detectItemQueryKind(query) {
   return null;
 }
 
+const _hasType = (item, type) => (item.types || []).includes(type);
+
 // 種別ごとの変換（ctx = _loadItemDetailContext の結果）。
-// 個別の変換は未実装で、従来どおり空配列を返す（タブ側は空表示で許容）
+// armorPlate / weaponMods は未実装で、従来どおり空配列を返す（タブ側は空表示で許容）
 const _itemDetailTransforms = {
-  ammoBox: ctx => ({ items: [] }),
+  // ammoPacks: containsItems の item は ID 文字列 → { id } に整形
+  ammoBox: ({ items, tradersById, tasksById, acquisitions }) => ({
+    items: items.filter(it => _hasType(it, 'ammoBox')).map(it => ({
+      id: it.id,
+      name: it.name || '',
+      shortName: it.shortName || '',
+      iconLink: it.iconLink || '',
+      buyFor: _makeBuyFor(it, tradersById, tasksById),
+      bartersFor: acquisitions[it.id]?.bartersFor || [],
+      containsItems: (it.containsItems || []).map(ci => ({ item: { id: ci.item }, count: ci.count || 1 })),
+    })),
+  }),
   armorPlate: ctx => ({ items: [] }),
-  weapons: ctx => ({ items: [] }),
+  // weapons（types: [gun, preset]）: gun は口径、preset はベース銃ID（弾薬タブの presetToBase 集約用）
+  weapons: ({ items }) => ({
+    items: items.filter(it => _hasType(it, 'gun') || _hasType(it, 'preset')).map(it => {
+      const p = it.properties || {};
+      return {
+        id: it.id,
+        name: it.name || '',
+        shortName: it.shortName || '',
+        iconLink: it.iconLink || '',
+        types: it.types || [],
+        properties: p.propertiesType === 'ItemPropertiesPreset'
+          ? { baseItem: p.baseItem ? { id: p.baseItem } : null }
+          : { caliber: p.caliber || null },
+      };
+    }),
+  }),
   weaponMods: ctx => ({ items: [] }),
 };
 
-function _transformAmmo(ctx) {
-  return { ammo: [] };
+// ammo: 弾の性能値は properties から取る。ItemPropertiesAmmo のみに絞る
+// （types に ammo を持つ手榴弾 ItemPropertiesGrenade や、types が ammo の一部弾薬箱を除外。
+//   GraphQL の ammo も BSG の Ammo カテゴリ由来で手榴弾は含まない）
+function _transformAmmo({ items, tradersById, tasksById, acquisitions }) {
+  const ammo = items
+    .filter(it => it.properties?.propertiesType === 'ItemPropertiesAmmo')
+    .map(it => {
+      const p = it.properties;
+      const acq = acquisitions[it.id] || {};
+      return {
+        caliber: p.caliber || null,
+        damage: p.damage ?? 0,
+        penetrationPower: p.penetrationPower ?? 0,
+        armorDamage: p.armorDamage ?? 0,
+        fragmentationChance: p.fragmentationChance ?? 0,
+        item: {
+          id: it.id,
+          name: it.name || '',
+          shortName: it.shortName || '',
+          iconLink: it.iconLink || '',
+          types: it.types || [],
+          buyFor: _makeBuyFor(it, tradersById, tasksById),
+          craftsFor: acq.craftsFor || [],
+          bartersFor: acq.bartersFor || [],
+        },
+      };
+    });
+  return { ammo };
 }
 
 // ── クエリ解析ヘルパー ─────────────────────────────────────────────
