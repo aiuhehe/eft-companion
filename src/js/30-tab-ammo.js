@@ -8,12 +8,24 @@
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>貫通力:</span>
-                {[[0, '全て'], [20, '20+'], [35, '35+'], [47, '強い弾 47+']].map(([val, label]) => (
+                {[[0, '全て'], [20, '20+'], [35, '35+'], [47, '47+']].map(([val, label]) => (
                   <button key={val} onClick={() => setAmmoMinPen(val)} className="btn btn-sm"
                     style={{
                       background: ammoMinPen === val ? 'var(--accent)' : 'var(--bg-card)',
                       color: ammoMinPen === val ? 'var(--accent-on)' : 'var(--text-secondary)',
                       border: '1px solid var(--border)', fontWeight: ammoMinPen === val ? 'bold' : 'normal',
+                    }}>{label}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>肉ダメ:</span>
+                {[[0, '全て'], [50, '50+'], [70, '70+'], [100, '100+']].map(([val, label]) => (
+                  <button key={val} onClick={() => setAmmoMinDmg(val)} className="btn btn-sm"
+                    style={{
+                      background: ammoMinDmg === val ? 'var(--danger-bg-mid)' : 'var(--bg-card)',
+                      color: ammoMinDmg === val ? 'var(--danger-text)' : 'var(--text-secondary)',
+                      border: `1px solid ${ammoMinDmg === val ? 'var(--danger-text)' : 'var(--border)'}`,
+                      fontWeight: ammoMinDmg === val ? 'bold' : 'normal',
                     }}>{label}</button>
                 ))}
               </div>
@@ -50,6 +62,7 @@
             <AmmoCaliberContent
               sortedAmmoByCaliber={sortedAmmoByCaliber}
               ammoMinPen={ammoMinPen}
+              ammoMinDmg={ammoMinDmg}
             />
           )}
         </div>

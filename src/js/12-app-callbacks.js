@@ -18,6 +18,7 @@
 
   // 弾薬タブの表示制御
   const [ammoMinPen, setAmmoMinPen] = useState(0); // 貫通力の下限フィルタ
+  const [ammoMinDmg, setAmmoMinDmg] = useState(0); // 肉ダメージ（damage）の下限フィルタ
   const [ammoCaliberSort, setAmmoCaliberSort] = useState('pen'); // 'pen' | 'caliber' | 'weapons'
   // 口径ごとにグルーピングし、口径は最大貫通力の高い順、弾は貫通力の高い順に並べる
   const ammoByCaliber = useMemo(() => {
