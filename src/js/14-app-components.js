@@ -406,7 +406,7 @@
           style={{ marginBottom: 8, cursor: weapons.length > 0 ? 'pointer' : 'default', userSelect: 'none' }}
         >
           <Icon name="target" size={13} color="var(--accent)" /> {caliber}
-          <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 'normal', marginLeft: 6 }}>最大PEN {maxPen}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 'normal', marginLeft: 6 }}>貫通力MAX {maxPen}</span>
           {weapons.length > 0 && (
             <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
               <Icon name="backpack" size={10} color="var(--text-dim)" /> {weapons.length}種の銃
@@ -537,13 +537,15 @@
     );
   };
 
-  const AmmoCaliberContent = ({ sortedAmmoByCaliber, ammoMinPen }) => {
+  const AmmoCaliberContent = ({ sortedAmmoByCaliber, ammoMinPen, ammoMinDmg }) => {
+    // 貫通力・肉ダメージの下限フィルタ（AND）
+    const passes = r => (r.penetrationPower || 0) >= ammoMinPen && (r.damage || 0) >= ammoMinDmg;
     const [activeCaliber, setActiveCaliber] = React.useState(null);
     const sidebarRef = React.useRef(null);
 
     React.useEffect(() => {
       const sections = sortedAmmoByCaliber
-        .filter(({ caliber, rounds }) => rounds.filter(r => (r.penetrationPower || 0) >= ammoMinPen).length > 0)
+        .filter(({ caliber, rounds }) => rounds.some(passes))
         .map(({ caliber }) => caliber);
       if (sections.length === 0) return;
 
@@ -574,10 +576,10 @@
         if (el) obs.observe(el);
       });
       return () => obs.disconnect();
-    }, [sortedAmmoByCaliber, ammoMinPen]);
+    }, [sortedAmmoByCaliber, ammoMinPen, ammoMinDmg]);
 
     const visibleSections = sortedAmmoByCaliber.filter(({ caliber, rounds }) =>
-      rounds.filter(r => (r.penetrationPower || 0) >= ammoMinPen).length > 0
+      rounds.some(passes)
     );
 
     return (
@@ -611,7 +613,7 @@
                 }}
               >
                 {caliber}
-                <span style={{ display: 'block', fontSize: 9, color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 'normal' }}>PEN {maxPen}</span>
+                <span style={{ display: 'block', fontSize: 9, color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 'normal' }}>貫通力MAX {maxPen}</span>
               </button>
             );
           })}
@@ -620,7 +622,7 @@
         {/* 右コンテンツ */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {visibleSections.map(({ caliber, maxPen, rounds }) => {
-            const shown = rounds.filter(r => (r.penetrationPower || 0) >= ammoMinPen);
+            const shown = rounds.filter(passes);
             return (
               <AmmoCaliberSection
                 key={caliber}
