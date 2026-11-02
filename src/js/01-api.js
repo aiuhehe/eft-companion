@@ -568,6 +568,28 @@ async function fetchJsonApiFallback(query) {
     case 'ammo':
       return _transformAmmo(await _loadItemDetailContext(jMode, lang));
 
+    case 'historicalItemPrices': {
+      // /{mode}/prices/{id} は全期間の履歴（GraphQL と同じ { price, priceMin, timestamp }）を返すので days で切り出す。
+      // 再取得で最新化できるよう _fetchJson のキャッシュは使わない（重複 fetch は呼び出し側で防いでいる）
+      const id = query.match(/\bid:\s*"(\w+)"/)?.[1];
+      const days = Number(query.match(/\bdays:\s*(\d+)/)?.[1]) || 30;
+      if (!id) throw new Error('JSON API fallback: historicalItemPrices requires id');
+      const url = `${JSON_API_BASE}/${jMode}/prices/${id}`;
+      // 履歴の無いアイテム（ルーブル等フリマ取引不可）は 404 だが CORS ヘッダーが無く、ブラウザでは
+      // fetch 自体が TypeError で失敗する。GraphQL が0件を返していたのに合わせて空配列として扱う
+      let res;
+      try { res = await fetch(url); } catch { return { historicalItemPrices: [] }; }
+      if (res.status === 404) return { historicalItemPrices: [] };
+      if (!res.ok) throw new Error(`JSON API ${res.status}: ${url}`);
+      const points = (await res.json()).data || [];
+      const since = Date.now() - days * 86400000;
+      return {
+        historicalItemPrices: points
+          .filter(p => Number(p.timestamp) >= since)
+          .map(p => ({ price: p.price, priceMin: p.priceMin, timestamp: String(p.timestamp) })),
+      };
+    }
+
     default:
       throw new Error(`JSON API fallback: unsupported query type "${type}"`);
   }
