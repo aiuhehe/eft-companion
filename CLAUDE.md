@@ -123,6 +123,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 
 **アイテム詳細系クエリのフォールバック（`01-api.js`・2026-10-30）:**
 - `ammo` と、クエリ名が `items` の `ammoPacks` / `armorPlates` / `weapons` / `weaponMods` は `_detectItemQueryKind()` で振り分け、`_loadItemDetailContext(jMode, lang)` の共通データ（翻訳済み items・traders・tasks・hideout と生の barters・crafts）から `_itemDetailTransforms[種別]` / `_transformAmmo` で変換する。**`ammo` / `ammoBox` / `weapons` は実装済み**（2026-11-02・弾薬タブはフォールバック中も通常表示）。`armorPlate` / `weaponMods` は未実装で空配列を返す（プレート・プリセットタブは引き続き制限表示）。
+- フリマ価格履歴（`historicalItemPrices`）は `json.tarkov.dev/{mode}/prices/{itemId}`（全期間の履歴）を取得し、クエリの `days` で切り出して GraphQL と同じ形で返す（2026-11-02・キャッシュなし・404 は空配列）。
 - 共通ヘルパー: `_makeBuyFor(item, tradersById, tasksById)`（`buyFromTrader` → GraphQL 形式の `buyFor`。`noFlea` でなければ `lastLowPrice`（無ければ `avg24hPrice`）で `flea-market` を追加）、`_buildAcquisitionIndex(barters, crafts, names)`（報酬アイテムID → `bartersFor` / `craftsFor`）。
 - `_fetchTranslated` は翻訳適用済みの結果もキャッシュする（items 約17MB の翻訳を何度も走らせない）。ダウンロードは `_fetchJson`、共通データは `_itemDetailCtxCache` でそれぞれ1回。
 
@@ -136,7 +137,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 
 - `pvp-season` はハイフンを含み GraphQL の enum 名として不正なため、`fetchGraphQL` は GraphQL を経由せず **JSON API（`json.tarkov.dev/pvp-season/...`）に直行**する（`_isJsonApiOnlyQuery`）。このため GraphQL 復旧後もシーズンモードは常にフォールバック扱い（ヘッダーに「一部機能制限中」・プレート/プリセット等の GraphQL 専用データは空）。
 - ハイドアウト（`QUERIES.hideout`）はシーズン時のみ `gameMode: pvp-season` を付けて取得先を切り替える。
-- `pvp-season` にはアリーナ系タスクが含まれない。フリマ価格履歴（`historicalItemPrices`）はシーズン中も設定タブのゲームモード（`regular`/`pve`）を使う。
+- `pvp-season` にはアリーナ系タスクが含まれない。フリマ価格履歴（`historicalItemPrices`）もシーズン中は `pvp-season` の履歴を取得する（2026-11-02〜）。
 
 **`stationLevelRequirements`（ステーション間依存条件）の取得可否（2026-08-09 確認）:**
 - GraphQL: スキーマ上フィールドあり・現在停止中のため取得不可

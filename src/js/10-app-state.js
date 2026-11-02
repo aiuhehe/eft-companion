@@ -78,7 +78,8 @@ function App() {
   const loadItemHistory = useCallback((itemId) => {
     if (historyReqRef.current.has(itemId)) return;                // 取得済み or 取得中なら何もしない
     historyReqRef.current.add(itemId);
-    const gm = gameMode === 'pve' ? 'pve' : 'regular';
+    // シーズンモードはシーズンの履歴（pvp-season は JSON API 直行。loadAPIData と同じ判定）
+    const gm = isSeasonMode(activeMode) ? 'pvp-season' : gameMode === 'pve' ? 'pve' : 'regular';
     // 既存データがあれば点を残したまま再取得（チラつき防止）。無ければローディング表示。
     setHistoryCache(prev => prev[itemId]?.points
       ? prev
