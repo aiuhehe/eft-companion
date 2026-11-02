@@ -19,7 +19,7 @@
   // 弾薬タブの表示制御
   const [ammoMinPen, setAmmoMinPen] = useState(0); // 貫通力の下限フィルタ
   const [ammoMinDmg, setAmmoMinDmg] = useState(0); // 肉ダメージ（damage）の下限フィルタ
-  const [ammoCaliberSort, setAmmoCaliberSort] = useState('pen'); // 'pen' | 'caliber' | 'weapons'
+  const [ammoCaliberSort, setAmmoCaliberSort] = useState('pen'); // 'pen' | 'damage' | 'caliber' | 'weapons'
   // 口径ごとにグルーピングし、口径は最大貫通力の高い順、弾は貫通力の高い順に並べる
   const ammoByCaliber = useMemo(() => {
     const groups = {};
@@ -30,6 +30,7 @@
     const arr = Object.entries(groups).map(([caliber, rounds]) => ({
       caliber,
       maxPen: Math.max(...rounds.map(r => r.penetrationPower || 0)),
+      maxDmg: Math.max(...rounds.map(r => r.damage || 0)),
       rounds: rounds.slice().sort((x, y) => (y.penetrationPower || 0) - (x.penetrationPower || 0)),
     }));
     arr.sort((a, b) => b.maxPen - a.maxPen);
@@ -141,6 +142,12 @@
   const sortedAmmoByCaliber = useMemo(() => {
     if (ammoCaliberSort === 'pen') return ammoByCaliber;
     const arr = ammoByCaliber.slice();
+    if (ammoCaliberSort === 'damage') {
+      // 口径は最大肉ダメの高い順、口径内の弾も肉ダメの高い順に並べ替える
+      return arr
+        .map(g => ({ ...g, rounds: g.rounds.slice().sort((x, y) => (y.damage || 0) - (x.damage || 0)) }))
+        .sort((a, b) => b.maxDmg - a.maxDmg);
+    }
     if (ammoCaliberSort === 'caliber') {
       arr.sort((a, b) => caliberToMm(b.caliber) - caliberToMm(a.caliber));
     } else if (ammoCaliberSort === 'weapons') {

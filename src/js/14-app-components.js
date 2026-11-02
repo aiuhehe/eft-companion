@@ -406,7 +406,7 @@
           style={{ marginBottom: 8, cursor: weapons.length > 0 ? 'pointer' : 'default', userSelect: 'none' }}
         >
           <Icon name="target" size={13} color="var(--accent)" /> {caliber}
-          <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 'normal', marginLeft: 6 }}>最大PEN {maxPen}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 'normal', marginLeft: 6 }}>貫通力MAX {maxPen}</span>
           {weapons.length > 0 && (
             <span style={{ fontSize: 10, color: 'var(--text-dim)', marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
               <Icon name="backpack" size={10} color="var(--text-dim)" /> {weapons.length}種の銃
@@ -613,7 +613,7 @@
                 }}
               >
                 {caliber}
-                <span style={{ display: 'block', fontSize: 9, color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 'normal' }}>PEN {maxPen}</span>
+                <span style={{ display: 'block', fontSize: 9, color: isActive ? 'var(--accent)' : 'var(--text-dim)', fontWeight: 'normal' }}>貫通力MAX {maxPen}</span>
               </button>
             );
           })}
