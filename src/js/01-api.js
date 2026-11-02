@@ -431,10 +431,19 @@ function _detectQueryType(query) {
   return query.match(/\{\s*(\w+)\s*[\(\{]/)?.[1] || '';
 }
 
+// JSON API のパスにそのまま使えるモード（それ以外は regular 扱い）
+const JSON_API_MODES = ['regular', 'pve', 'pvp-season'];
+
 function _detectGameMode(query) {
-  // GraphQL クエリの gameMode: pvp/pve を JSON API の regular/pve にマップ
-  const gm = query.match(/gameMode:\s*(\w+)/)?.[1] || 'regular';
-  return gm === 'pve' ? 'pve' : 'regular';
+  // GraphQL クエリの gameMode を JSON API のパス（regular/pve/pvp-season）にマップ
+  const gm = query.match(/gameMode:\s*([\w-]+)/)?.[1] || 'regular';
+  return JSON_API_MODES.includes(gm) ? gm : 'regular';
+}
+
+// pvp-season はハイフンを含み GraphQL の enum 名として不正（構文エラーになる）ため、
+// GraphQL を経由せず JSON API に直行する
+function _isJsonApiOnlyQuery(query) {
+  return /gameMode:\s*pvp-season\b/.test(query);
 }
 
 function _detectLang(query) {
@@ -513,6 +522,10 @@ async function fetchJsonApiFallback(query) {
 // ── メイン fetchGraphQL ──────────────────────────────────────────
 
 async function fetchGraphQL(query) {
+  if (_isJsonApiOnlyQuery(query)) {
+    _fallbackUsed = true;
+    return fetchJsonApiFallback(query);
+  }
   let graphqlErr;
   try {
     const res = await fetch(GRAPHQL_URL, {

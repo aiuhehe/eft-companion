@@ -55,6 +55,11 @@ function addNewSeason() {
   switchMode(id);
 }
 
+/** シーズンモード（'season_N'）かどうか */
+function isSeasonMode(mode) {
+  return /^season_\d+$/.test(mode);
+}
+
 /** モード id を表示ラベルに変換する */
 function getModeLabel(mode) {
   if (mode === 'pvp') return 'PvP';

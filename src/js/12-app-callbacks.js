@@ -411,13 +411,15 @@
     setLoadError('');
     resetFallbackFlag();
     try {
-      const gm = gameMode === 'pve' ? 'pve' : 'regular';
+      // シーズンモードは設定の gameMode に関わらず json.tarkov.dev の pvp-season を取得
+      const season = isSeasonMode(activeMode);
+      const gm = season ? 'pvp-season' : gameMode === 'pve' ? 'pve' : 'regular';
       const lang = uiLang === 'ja' ? 'ja' : 'en';
       const [traderData, itemData, itemEnData, hideoutData, barterData, craftData, taskData, ammoData, ammoPacksData, armorPlatesData, weaponModsData, weaponsData] = await Promise.all([
         fetchGraphQL(QUERIES.traders(gm)),
         fetchGraphQL(QUERIES.items(gm)),
         fetchGraphQL(QUERIES.itemsEn(gm)),
-        fetchGraphQL(QUERIES.hideout(lang)),
+        fetchGraphQL(QUERIES.hideout(lang, season ? gm : undefined)),
         fetchGraphQL(QUERIES.barters(gm, lang)),
         fetchGraphQL(QUERIES.crafts(gm, lang)),
         fetchGraphQL(QUERIES.tasks(gm, lang)),
@@ -462,7 +464,7 @@
     } finally {
       setLoading(false);
     }
-  }, [gameMode, uiLang]);
+  }, [gameMode, uiLang, activeMode]);
 
   // ページロード時に自動でAPIデータ取得
   useEffect(() => { loadAPIData(); }, []);
