@@ -539,3 +539,12 @@
   cursor: pointer;
 }
 .map-image-replace-link:hover { color: var(--text-secondary); }
+
+/* プレートタブの絞り込み（クラス・部位）: 形は共通、選択中の色だけグループで変える */
+.armor-filters { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 6px; align-items: center; margin-bottom: 10px; }
+.armor-filter { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.armor-filter-label { font-size: 12px; color: var(--text-secondary); }
+.armor-filter-btn { --filter-color: var(--accent); font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); cursor: pointer; white-space: nowrap; }
+.armor-filter-btn:hover { border-color: var(--filter-color); }
+.armor-filter-btn.is-zone { --filter-color: var(--info); }
+.armor-filter-btn.is-active { border-color: var(--filter-color); background: color-mix(in srgb, var(--filter-color) 18%, transparent); color: var(--filter-color); font-weight: bold; }
