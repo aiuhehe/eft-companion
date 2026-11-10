@@ -141,3 +141,23 @@ function imageFileToPhotoDataUrl(file, maxSize = 1280, quality = 0.8) {
     img.src = url;
   });
 }
+
+// アーマープレートの部位（zones の表示名）→ 'front' | 'back' | 'left' | 'right' | null
+// 日本語訳は FR. PLATE / F. PLATE（前）・BCK. PLATE・L. PLATE・R. PLATE。
+// 未翻訳時の生キー（`Armor Zone Plate_Granit_SAPI_chest` 等）や英語表記にも対応する
+const ARMOR_ZONE_FILTERS = [
+  ['front', 'FR. PLATE'],
+  ['back',  'BCK. PLATE'],
+  ['left',  'L. PLATE'],
+  ['right', 'R. PLATE'],
+];
+function armorZoneKind(label) {
+  const s = String(label || '').toLowerCase();
+  if (/back|bck/.test(s)) return 'back';
+  if (/left|^l\./.test(s)) return 'left';
+  if (/right|^r\./.test(s)) return 'right';
+  if (/chest|front|^fr?\./.test(s)) return 'front';
+  return null;
+}
+// プレート一覧の列: クラス / 耐久値 / ブラント透過率 / アイコン / 名前 / 部位 / 入手手段
+const ARMOR_GRID_COLS = '40px 52px 66px 34px minmax(130px,1fr) minmax(0,0.8fr) minmax(0,1.4fr)';

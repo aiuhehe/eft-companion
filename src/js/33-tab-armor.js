@@ -3,33 +3,48 @@
       {activeTab === 'armor' && (
         <div>
           <div className="section" style={{ paddingBottom: 12 }}>
-            <div style={{ display: 'flex', gap: 16, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div className="section-title" style={{ marginBottom: 0 }}>
-                <Icon name="shield" size={14} color="var(--accent)" /> プレート一覧（クラス別・耐久値順）
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>クラス:</span>
-                {[[0, '全て'], [3, '3+'], [4, '4+'], [5, '5+'], [6, '6']].map(([val, label]) => (
-                  <button key={val} onClick={() => setArmorMinClass(val)} className="btn btn-sm"
-                    style={{
-                      background: armorMinClass === val ? 'var(--accent)' : 'var(--bg-card)',
-                      color: armorMinClass === val ? 'var(--accent-on)' : 'var(--text-secondary)',
-                      border: '1px solid var(--border)', fontWeight: armorMinClass === val ? 'bold' : 'normal',
-                    }}>{label}</button>
-                ))}
-              </div>
+            <div className="section-title" style={{ marginBottom: 10 }}>
+              <Icon name="shield" size={14} color="var(--accent)" /> プレート一覧（クラス別）
+            </div>
+            {/* クラス・部位フィルタ（どちらも複数選択。何も選ばない＝「全て」）。弾薬タブと同じくラベル列＋ボタン列のグリッドで縦に揃える */}
+            <div className="armor-filters">
+              {[
+                { label: 'クラス', group: 'is-class', selected: armorClasses, setSelected: setArmorClasses,
+                  options: armorClassOptions.map(c => [c, String(c), `Class ${c}`]) },
+                { label: '部位', group: 'is-zone', selected: armorZones, setSelected: setArmorZones,
+                  options: ARMOR_ZONE_FILTERS.map(([kind, label]) => [kind, label, kind === 'front' ? 'FR. PLATE / F. PLATE（前面）' : label]) },
+              ].map(({ label, group, selected, setSelected, options }) => (
+                <React.Fragment key={group}>
+                  <span className="armor-filter-label">{label}</span>
+                  <div className="armor-filter">
+                  <button className={`armor-filter-btn ${group}${selected.length === 0 ? ' is-active' : ''}`}
+                    onClick={() => setSelected([])}>全て</button>
+                  {options.map(([val, text, title]) => {
+                    const on = selected.includes(val);
+                    return (
+                      <button key={val} title={title} className={`armor-filter-btn ${group}${on ? ' is-active' : ''}`}
+                        onClick={() => setSelected(prev => {
+                          const next = on ? prev.filter(v => v !== val) : [...prev, val];
+                          return next.length === options.length ? [] : next; // 全部選んだら「全て」に戻す
+                        })}>{text}</button>
+                    );
+                  })}
+                  </div>
+                </React.Fragment>
+              ))}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <span>ブラント透過率: 弾丸が貫通しなかった場合にダメージの何%が素通りするか。低いほど防御力が高い。</span>
+              <span>比べ方: クラス → 耐久値 → ブラント透過率。各クラスの「ブラント」見出しをクリックで低い順 → 高い順 → 耐久値順。クラス・部位は複数選択でき、選んだもののどれかに当てはまるプレートを表示。</span>
             </div>
           </div>
 
           {apiData.armorPlates.length === 0 ? (
             <div className="section" style={{ color: 'var(--text-dim)', fontSize: 13 }}>APIデータを取得してください。</div>
+          ) : armorByClass.length === 0 ? (
+            <div className="section" style={{ color: 'var(--text-dim)', fontSize: 13 }}>選択したクラス・部位に合うプレートはありません。</div>
           ) : (
             armorByClass.map(({ cls, items }) => {
-              if (armorMinClass === 6 && cls !== 6) return null;
-              if (armorMinClass > 0 && armorMinClass < 6 && cls < armorMinClass) return null;
               const clsColor = cls >= 6 ? '#f59e0b' : cls === 5 ? '#fb923c' : cls === 4 ? '#facc15' : cls === 3 ? '#4ade80' : 'var(--text-dim)';
               const clsBg   = cls >= 6 ? 'rgba(245,158,11,0.15)' : cls === 5 ? 'rgba(251,146,60,0.15)' : cls === 4 ? 'rgba(250,204,21,0.12)' : cls === 3 ? 'rgba(74,222,128,0.12)' : 'var(--bg-card)';
               return (
@@ -40,6 +55,41 @@
                     <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 'normal', marginLeft: 6 }}>{items.length}種</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {/* 列見出し（ブラント透過率でクラスごとに並び替え） */}
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: ARMOR_GRID_COLS, alignItems: 'center', gap: 8,
+                      padding: '0 8px', fontSize: 10, color: 'var(--text-dim)',
+                    }}>
+                      <span style={{ textAlign: 'center' }}>クラス</span>
+                      <span style={{ textAlign: 'center' }}>耐久値</span>
+                      <button
+                        onClick={() => setArmorBluntSort(prev => {
+                          const next = { ...prev };
+                          const cur = prev[cls];
+                          if (cur === 'asc') next[cls] = 'desc';
+                          else if (cur === 'desc') delete next[cls];
+                          else next[cls] = 'asc';
+                          return next;
+                        })}
+                        title={armorBluntSort[cls] === 'asc' ? '低い順（クリックで高い順）'
+                          : armorBluntSort[cls] === 'desc' ? '高い順（クリックで耐久値順に戻す）'
+                          : '耐久値順（クリックでブラント透過率の低い順）'}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 2,
+                          fontSize: 10, padding: '1px 2px', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap',
+                          background: armorBluntSort[cls] ? 'var(--accent-muted)' : 'transparent',
+                          color: armorBluntSort[cls] ? 'var(--accent)' : 'var(--text-dim)',
+                          border: `1px solid ${armorBluntSort[cls] ? 'var(--accent)' : 'var(--border)'}`,
+                        }}>
+                        ブラント
+                        <Icon name={armorBluntSort[cls] === 'desc' ? 'chevron-down' : armorBluntSort[cls] === 'asc' ? 'chevron-up' : 'sort'} size={10}
+                          color={armorBluntSort[cls] ? 'var(--accent)' : 'var(--text-dim)'} />
+                      </button>
+                      <span />
+                      <span>名前</span>
+                      <span>部位</span>
+                      <span>入手手段</span>
+                    </div>
                     {items.map(item => {
                       const p = item.properties || {};
                       const zones = (p.zones || []);
@@ -57,7 +107,7 @@
                       return (
                         <div key={item.id} style={{
                           display: 'grid',
-                          gridTemplateColumns: '40px 34px minmax(130px,1fr) 52px 52px minmax(0,0.8fr) minmax(0,1.4fr)',
+                          gridTemplateColumns: ARMOR_GRID_COLS,
                           alignItems: 'center', gap: 8, padding: '5px 8px',
                           background: 'var(--bg-secondary)', borderRadius: 6, border: '1px solid var(--border-light)',
                         }}>
@@ -66,13 +116,6 @@
                             textAlign: 'center', fontWeight: 'bold', fontSize: 12,
                             color: clsColor, background: clsBg, borderRadius: 4, padding: '2px 4px',
                           }}>Cls {cls}</span>
-                          {/* アイコン */}
-                          <span style={{ display: 'inline-flex', justifyContent: 'center' }}>
-                            {item.iconLink && <img src={item.iconLink} alt="" className="item-icon-32" onError={e => { e.target.style.display = 'none'; }} />}
-                          </span>
-                          {/* 名前 */}
-                          <span style={{ fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                            title={item.name}>{item.name}</span>
                           {/* 耐久値 */}
                           <span title="最大耐久値" style={{
                             textAlign: 'center', fontWeight: 'bold', fontSize: 13,
@@ -83,6 +126,13 @@
                             textAlign: 'center', fontWeight: 'bold', fontSize: 12,
                             color: 'var(--text-secondary)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 4px',
                           }}>{blunt != null ? `${blunt}%` : '—'}</span>
+                          {/* アイコン */}
+                          <span style={{ display: 'inline-flex', justifyContent: 'center' }}>
+                            {item.iconLink && <img src={item.iconLink} alt="" className="item-icon-32" onError={e => { e.target.style.display = 'none'; }} />}
+                          </span>
+                          {/* 名前 */}
+                          <span style={{ fontSize: 13, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            title={item.name}>{item.name}</span>
                           {/* カバーゾーン */}
                           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                             {zones.length > 0 ? zones.map((z, i) => (

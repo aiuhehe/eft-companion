@@ -1,20 +1,39 @@
 
   // アーマープレートタブの表示制御
-  const [armorMinClass, setArmorMinClass] = useState(0);
+  // クラスフィルタ（複数選択・OR）。空配列 = 全て
+  const [armorClasses, setArmorClasses] = useState([]);
+  // データに存在するクラス（高い順）＝クラスフィルタのボタン
+  const armorClassOptions = useMemo(() =>
+    [...new Set((apiData.armorPlates || []).map(it => it.properties?.class || 0))].sort((a, b) => b - a),
+  [apiData.armorPlates]);
+  // 部位フィルタ（複数選択・OR）。空配列 = 全て
+  const [armorZones, setArmorZones] = useState([]);
+  // クラスごとのブラント透過率ソート { [cls]: 'asc' | 'desc' }。未設定 = 耐久値の高い順
+  const [armorBluntSort, setArmorBluntSort] = useState({});
   const armorByClass = useMemo(() => {
     const groups = {};
     (apiData.armorPlates || []).forEach(item => {
       const props = (item.properties || {});
       const cls = props.class || 0;
+      if (armorClasses.length > 0 && !armorClasses.includes(cls)) return;
+      if (armorZones.length > 0) {
+        const kinds = (props.zones || []).map(armorZoneKind);
+        if (!armorZones.some(z => kinds.includes(z))) return;
+      }
       (groups[cls] = groups[cls] || []).push(item);
     });
+    const byDurability = (a, b) => (b.properties?.durability || 0) - (a.properties?.durability || 0);
     return Object.entries(groups)
-      .map(([cls, items]) => ({
-        cls: Number(cls),
-        items: items.slice().sort((a, b) => (b.properties?.durability || 0) - (a.properties?.durability || 0)),
-      }))
+      .map(([cls, items]) => {
+        const dir = armorBluntSort[cls];
+        const blunt = it => it.properties?.bluntThroughput ?? Infinity;
+        const cmp = dir
+          ? (a, b) => (dir === 'asc' ? blunt(a) - blunt(b) : blunt(b) - blunt(a)) || byDurability(a, b)
+          : byDurability;
+        return { cls: Number(cls), items: items.slice().sort(cmp) };
+      })
       .sort((a, b) => b.cls - a.cls);
-  }, [apiData.armorPlates]);
+  }, [apiData.armorPlates, armorClasses, armorZones, armorBluntSort]);
 
   // 弾薬タブの表示制御
   const [ammoMinPen, setAmmoMinPen] = useState(0); // 貫通力の下限フィルタ
