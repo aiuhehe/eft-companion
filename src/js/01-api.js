@@ -416,7 +416,7 @@ function _detectItemQueryKind(query) {
 const _hasType = (item, type) => (item.types || []).includes(type);
 
 // 種別ごとの変換（ctx = _loadItemDetailContext の結果）。
-// armorPlate / weaponMods は未実装で、従来どおり空配列を返す（タブ側は空表示で許容）
+// weaponMods は未実装で、従来どおり空配列を返す（タブ側は空表示で許容）
 const _itemDetailTransforms = {
   // ammoPacks: containsItems の item は ID 文字列 → { id } に整形
   ammoBox: ({ items, tradersById, tasksById, acquisitions }) => ({
@@ -430,7 +430,47 @@ const _itemDetailTransforms = {
       containsItems: (it.containsItems || []).map(ci => ({ item: { id: ci.item }, count: ci.count || 1 })),
     })),
   }),
-  armorPlate: ctx => ({ items: [] }),
+  // armorPlates: 性能値は properties（ItemPropertiesArmorAttachment）から取る。
+  // zones は翻訳済み（`Armor Zone Plate_..._chest` → `FR. PLATE` 等）。high/low など同じ部位名に
+  // 訳される zone が並ぶため重複を除く。material は ID 文字列 → { name }（armorMaterials の翻訳名、
+  // 未翻訳なら ID のまま）
+  armorPlate: ({ itemsData, items, tradersById, tasksById, acquisitions }) => {
+    const materials = itemsData?.armorMaterials || {};
+    const materialName = id => {
+      const n = materials[id]?.name;
+      return n && n !== `Mat${id}` ? n : id;
+    };
+    return {
+      items: items
+        .filter(it => _hasType(it, 'armorPlate') && it.properties?.propertiesType === 'ItemPropertiesArmorAttachment')
+        .map(it => {
+          const p = it.properties;
+          const acq = acquisitions[it.id] || {};
+          return {
+            id: it.id,
+            name: it.name || '',
+            shortName: it.shortName || '',
+            iconLink: it.iconLink || '',
+            wikiLink: it.wikiLink || null,
+            avg24hPrice: it.avg24hPrice ?? null,
+            buyFor: _makeBuyFor(it, tradersById, tasksById),
+            bartersFor: acq.bartersFor || [],
+            craftsFor: acq.craftsFor || [],
+            properties: {
+              class: p.class ?? 0,
+              material: p.material ? { name: materialName(p.material) } : null,
+              bluntThroughput: p.bluntThroughput ?? null,
+              repairCost: p.repairCost ?? null,
+              speedPenalty: p.speedPenalty ?? null,
+              turnPenalty: p.turnPenalty ?? null,
+              ergoPenalty: p.ergoPenalty ?? null,
+              zones: [...new Set(p.zones || [])],
+              durability: p.durability ?? null,
+            },
+          };
+        }),
+    };
+  },
   // weapons（types: [gun, preset]）: gun は口径、preset はベース銃ID（弾薬タブの presetToBase 集約用）
   weapons: ({ items }) => ({
     items: items.filter(it => _hasType(it, 'gun') || _hasType(it, 'preset')).map(it => {
