@@ -16,6 +16,7 @@
 | `README.md` | 公開用の説明（GitHub リポジトリ `aiuhehe/eft-companion`） |
 | `.github/workflows/ci.yml` | `main` 向け PR ごとに `./build.sh --dist` を実行してビルドが通るか確認（公開はしない） |
 | `.github/workflows/pages.yml` | `main` への push で `./build.sh --dist` → `dist/` を GitHub Pages（https://aiuhehe.github.io/eft-companion/）に公開 |
+| `.github/workflows/discord-notify.yml` + `.github/scripts/discord_notify.py` | PR の動き（作成・レビュー・コメント・CI失敗・Pages公開・マージ）を Discord フォーラムへ通知（1 PR = 1 投稿）＋毎朝のまとめ。仕様は `docs/Discord通知仕様書.md` |
 | `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`maps/`・開発用作業ファイルを除外 |
 
 ### ソースファイル一覧（`src/js/`）
@@ -83,6 +84,7 @@
 | 鍵一覧 | `docs/鍵一覧機能仕様書.md` |
 | 在庫（スクリーンショット登録・OCR） | `docs/在庫機能仕様書.md` |
 | マップ | `docs/マップ機能仕様書.md` |
+| （GitHub Actions）Discord 通知 | `docs/Discord通知仕様書.md` |
 
 > **JSXソース分割について（2026-07-03）**
 > JSXコードは `src/js/` 以下に分割されている（約35ファイル）。
