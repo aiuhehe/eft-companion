@@ -1,0 +1,55 @@
+name: Discord notify
+
+# PR の動きを Discord のフォーラムチャンネルへ通知する（1 PR = 1 投稿）。
+# 処理本体は .github/scripts/discord_notify.py、仕様は docs/Discord通知仕様書.md。
+#
+# 安全のため: このワークフローは PR のコードを checkout も実行もしない。
+# スクリプトは常に main から取り出す（pull_request_target / pull_request_review でシークレットを扱うため）。
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, closed, labeled, unlabeled, edited]
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+  workflow_run:
+    workflows: ["Build check", "Deploy to GitHub Pages"]
+    types: [completed]
+  schedule:
+    - cron: "0 23 * * *"   # 毎朝 8:00（日本時間）のまとめ
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "スレッドを作成・同期する PR 番号（空なら毎朝のまとめを今すぐ投稿）"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  actions: read
+
+# 同じ PR のイベントは順番に処理する（スレッドの二重作成を防ぐ）
+concurrency:
+  group: discord-notify-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Notify Discord
+        run: python3 .github/scripts/discord_notify.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_FORUM_CHANNEL_ID: ${{ secrets.DISCORD_FORUM_CHANNEL_ID }}
+          DISCORD_MENTION_USER_ID: ${{ secrets.DISCORD_MENTION_USER_ID }}
