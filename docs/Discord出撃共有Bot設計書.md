@@ -160,7 +160,7 @@ tarkov.dev のデータでは、同じマップの派生版が別のマップと
 | Ground Zero 21+・Ground Zero（チュートリアル版） | `Ground Zero` |
 | The Lab（暗い版）・Infected Lab | `The Lab` |
 
-- 正規化は、出撃準備タブのマップでの絞り込みと共有データの作成で**同じ関数**を使う。これにより、派生版だけが付いた目標も出撃準備タブに表示されるようになる。
+- 正規化は、出撃準備タブのマップでの絞り込みと共有データの作成で**同じ関数**を使う（実装済み・Issue #30: `normalizeRaidMapName` / `normalizeRaidMaps`・対応表 `RAID_MAP_ALIASES`・`00-constants.js`）。これにより、派生版だけが付いた目標も出撃準備タブに表示されるようになる。
 - 取得したデータそのものは書き換えない（絞り込みと共有データ作成のときに正規化関数を通す）。
 - `Icebreaker`・`The Labyrinth`・`Terminal` は派生版ではなく別のマップとして `RAID_MAPS` に加える。`RAID_MAPS` は次の13マップになる: Customs / Factory / Woods / Shoreline / Interchange / Reserve / Lighthouse / Streets of Tarkov / The Lab / Ground Zero / Icebreaker / The Labyrinth / Terminal。
 - 「設置」以外でマップ指定が無い目標は「どのマップでもよい」扱い。「設置」はマップ指定が無くても、マップを選ばない限り表示しない（アプリと同じ）。

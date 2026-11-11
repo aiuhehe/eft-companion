@@ -759,7 +759,8 @@
       for (const obj of (task.objectives || [])) {
         const cat = classifyObj(obj.type, obj.foundInRaid);
         if (!cat) continue;
-        const objMaps = (obj.maps || []).map(m => m.name);
+        // 派生版（Night Factory・Infected Lab 等）は RAID_MAPS の名前に正規化して絞り込む
+        const objMaps = normalizeRaidMaps(obj.maps);
         if (objMaps.length === 0) anywhere.push({ obj, task, cat });
         else if (objMaps.includes(raidMap)) specific.push({ obj, task, cat });
       }

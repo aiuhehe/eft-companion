@@ -522,7 +522,7 @@ function App() {
     const ct = customTasks.find(t => t.id === taskId);
     if (!ct) return;
     const objs = (ct.objectives || []).map(o => {
-      const maps = (o.maps || []).map(m => m.name);
+      const maps = normalizeRaidMaps(o.maps); // フォームのマップボタン（RAID_MAPS）と揃える
       if (o.type === 'findItem' && o.foundInRaid)
         return { origId: o.id, catKey: 'collect', itemName: o.item?.name || o.itemCategory?.name || '', itemId: o.item?.id || null, itemIconLink: o.item?.iconLink || '', description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory };
       if ((o.type === 'findItem' || o.type === 'giveItem') && !o.foundInRaid)
@@ -547,7 +547,7 @@ function App() {
 
   const openApiTaskEdit = useCallback((task) => {
     const objs = (task.objectives || []).flatMap(o => {
-      const maps = (o.maps || []).map(m => m.name);
+      const maps = normalizeRaidMaps(o.maps); // フォームのマップボタン（RAID_MAPS）と揃える
       // レイド内収集（FIR）
       if (o.type === 'findItem' && o.foundInRaid)
         return [{ catKey: 'collect', itemName: o.item?.name || o.itemCategory?.name || o.description || '', itemId: o.item?.id || null, itemIconLink: o.item?.iconLink || '', description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory }];
@@ -607,7 +607,9 @@ function App() {
   const mapImageOverridesRef = useRef({});
   useEffect(() => { mapImageOverridesRef.current = mapImageOverrides; }, [mapImageOverrides]);
   useEffect(() => {
-    mediaGetAllMapOverrides()
+    migrateMapOverrideNames()
+      .catch(e => console.warn('[EFT] 差し替えマップ画像のマップ名移行に失敗:', e))
+      .then(() => mediaGetAllMapOverrides())
       .then(all => setMapImageOverrides(Object.fromEntries(Object.entries(all).map(([k, b]) => [k, URL.createObjectURL(b)]))))
       .catch(e => console.warn('[EFT] 差し替えマップ画像の読み込みに失敗:', e));
   }, []);

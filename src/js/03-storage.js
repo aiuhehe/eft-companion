@@ -192,6 +192,40 @@ function mediaPutMapOverride(mapName, blob) { return _mediaTx('readwrite', store
 function mediaDeleteMapOverride(mapName)    { return _mediaTx('readwrite', store => { store.delete(mapName); }); }
 function mediaClearMapOverrides()           { return _mediaTx('readwrite', store => { store.clear(); }); }
 
+// ── マップ名の改名に伴う保存データの移行（起動時に毎回呼ぶ・冪等） ──
+// 2026-11-11: マップタブの 'Labyrinth' を tarkov.dev と同じ 'The Labyrinth' に改名（RAID_MAP_ALIASES）。
+// 旧名のピン（eft_task_pins_v1）・画像メタ（eft_maps_v1）・差し替え画像（IndexedDB）を新しい名前へ移す。
+// 旧バックアップを復元した場合もリロード後にここを通る。
+function migrateMapNameKeys() {
+  try {
+    const pins = JSON.parse(localStorage.getItem('eft_task_pins_v1') || 'null');
+    if (Array.isArray(pins) && pins.some(p => RAID_MAP_ALIASES[p?.mapName])) {
+      localStorage.setItem('eft_task_pins_v1', JSON.stringify(
+        pins.map(p => RAID_MAP_ALIASES[p?.mapName] ? { ...p, mapName: RAID_MAP_ALIASES[p.mapName] } : p)));
+    }
+    const maps = JSON.parse(localStorage.getItem('eft_maps_v1') || 'null');
+    if (maps && typeof maps === 'object' && Object.keys(maps).some(k => RAID_MAP_ALIASES[k])) {
+      const next = {};
+      for (const [k, v] of Object.entries(maps)) {
+        const nk = RAID_MAP_ALIASES[k] || k;
+        if (!(nk in next) || nk === k) next[nk] = v;
+      }
+      localStorage.setItem('eft_maps_v1', JSON.stringify(next));
+    }
+  } catch (e) { console.warn('[EFT] マップ名の移行に失敗:', e); }
+}
+
+/** 差し替え画像（IndexedDB）の旧マップ名キーを新しい名前へ移す。新しい名前が既にあれば旧キーを消すだけ */
+async function migrateMapOverrideNames() {
+  const all = await mediaGetAllMapOverrides();
+  for (const [oldName, blob] of Object.entries(all)) {
+    const newName = RAID_MAP_ALIASES[oldName];
+    if (!newName) continue;
+    if (!all[newName]) await mediaPutMapOverride(newName, blob);
+    await mediaDeleteMapOverride(oldName);
+  }
+}
+
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();

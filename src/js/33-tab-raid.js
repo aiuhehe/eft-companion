@@ -1,10 +1,5 @@
       {/* ===== TAB: 出撃準備 ===== */}
       {activeTab === 'raid' && (() => {
-        const RAID_MAPS = [
-          'Customs', 'Factory', 'Woods', 'Shoreline', 'Interchange',
-          'Reserve', 'Lighthouse', 'Streets of Tarkov', 'The Lab', 'Ground Zero',
-        ];
-
         // カテゴリ名 英語→日本語
         const CATEGORY_JA = {
           'Household goods': '家庭用品', 'Flammable materials': '可燃物',
@@ -29,10 +24,9 @@
         const activeTasks = raidObjectives.activeTasks || [];
 
         // 目標チェック用ヘルパー
-        const getObjKey = (taskId, obj) => obj.id || (taskId + obj.type + (obj.item?.id || obj.questItem?.id || obj.target || ''));
-        const isObjChecked = (taskId, obj) => !!(raidObjChecked[taskId]?.[getObjKey(taskId, obj)]);
+        const isObjChecked = (taskId, obj) => !!(raidObjChecked[taskId]?.[raidObjKey(taskId, obj)]);
         const toggleObjCheck = (taskId, obj) => {
-          const k = getObjKey(taskId, obj);
+          const k = raidObjKey(taskId, obj);
           setRaidObjChecked(prev => {
             const tc = { ...(prev[taskId] || {}) };
             if (tc[k]) delete tc[k]; else tc[k] = true;

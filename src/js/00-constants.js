@@ -52,6 +52,42 @@ const GRAPHQL_URL = 'https://api.tarkov.dev/graphql';
 // マップ画像は同梱しない（作者 REƎMR 氏の許可待ち）。利用者が入手して「画像を差し替え」で登録する
 const MAP_IMAGE_SOURCE_URL = 'https://reemr.se/';
 
+// ── マップ名（出撃準備タブ・マップタブ・Discord 共有データで共通） ──
+// 出撃準備タブで選べるマップ（13マップ）。名前は tarkov.dev の英語名に揃える
+const RAID_MAPS = [
+  'Customs', 'Factory', 'Woods', 'Shoreline', 'Interchange',
+  'Reserve', 'Lighthouse', 'Streets of Tarkov', 'The Lab', 'Ground Zero',
+  'Icebreaker', 'The Labyrinth', 'Terminal',
+];
+
+// tarkov.dev の派生版マップ → RAID_MAPS の名前（docs/Discord出撃共有Bot設計書.md §4.4）。
+// 'Labyrinth' は旧マップタブのキー名（2026-11-11 に 'The Labyrinth' へ改名）
+const RAID_MAP_ALIASES = {
+  'Night Factory':    'Factory',
+  'Infected Factory': 'Factory',
+  'The Lab (Dark)':   'The Lab',
+  'Infected Lab':     'The Lab',
+  'Labyrinth':        'The Labyrinth',
+};
+
+/** マップ名を RAID_MAPS の名前に正規化する。取得データは書き換えず、絞り込み・共有データ作成時に通す */
+const normalizeRaidMapName = (name) => {
+  if (!name) return name;
+  if (RAID_MAP_ALIASES[name]) return RAID_MAP_ALIASES[name];
+  // Ground Zero 21+ / Ground Zero Tutorial（ja は「Ground Zero チュートリアル」）
+  if (name.startsWith('Ground Zero')) return 'Ground Zero';
+  return name;
+};
+
+/** 目標の maps（[{ name }] または文字列配列）→ 正規化済みマップ名の配列（重複なし） */
+const normalizeRaidMaps = (maps) =>
+  [...new Set((maps || []).map(m => normalizeRaidMapName(typeof m === 'string' ? m : m?.name)).filter(Boolean))];
+
+/** 目標チェック（eft_raid_obj_checked_v1）のキー。出撃準備タブ・マップタブ・共有データで共通。形式を変えるとチェックが消える */
+const raidObjKey = (taskId, obj) =>
+  obj.id || (taskId + obj.type + (obj.item?.id || obj.questItem?.id || obj.target || ''));
+
+// マップタブで扱うマップと画像ファイル（キーは RAID_MAPS と同じ名前）
 const RAID_MAP_IMAGE_FILES = {
   'Customs':           'Customs.png',
   'Factory':           'Factory.png',
@@ -63,7 +99,7 @@ const RAID_MAP_IMAGE_FILES = {
   'Streets of Tarkov': 'StreetsOfTarkov.png',
   'The Lab':           'Labs.png',
   'Ground Zero':       'GroundZero.png',
-  'Labyrinth':         'Labyrinth.png',
+  'The Labyrinth':     'Labyrinth.png',
   'Icebreaker':        'Icebreaker.png',
   'Terminal':          'Terminal.png',
 };
