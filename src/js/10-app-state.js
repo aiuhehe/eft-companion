@@ -120,14 +120,6 @@ function App() {
     setHistoryOpenId(null);
   }, [gameMode]);
 
-  // アイテム一覧タブを開いた / APIデータ再取得時に、ウォッチボード・展開中チャートの履歴を取得
-  // （loadAPIData が成功時に historyCache/historyReqRef をクリア → lastLoaded 変化でここが再実行され最新化）
-  useEffect(() => {
-    if (activeTab !== 'items') return;
-    watchBoardIds.forEach(id => loadItemHistory(id));
-    if (historyOpenId) loadItemHistory(historyOpenId);
-  }, [activeTab, watchBoardIds, loadItemHistory, lastLoaded, historyOpenId]);
-
   // イベントタブを開いた / APIデータ再取得時に、イベントアイテム（EVENT_ITEMS）の価格推移を取得
   useEffect(() => {
     if (activeTab !== 'event') return;
@@ -146,17 +138,6 @@ function App() {
       return JSON.parse(own ?? legacy ?? '{}');
     } catch { return {}; }
   });
-  const toggleBlackoutDone = useCallback((key, apiId) => {
-    if (apiId) { toggleComplete(apiId); return; }
-    setBlackoutDone(prev => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem(modeKey('eft_blackout_v1'), JSON.stringify(next));
-      return next;
-    });
-  }, [toggleComplete]);
-  const isBlackoutDone = useCallback((task) =>
-    task.apiId ? completedTaskIds.includes(task.apiId) : !!blackoutDone[task.key]
-  , [blackoutDone, completedTaskIds]);
 
   // ===== ボスイベント: bossItemタイプのアイテムを要求するバーター =====
   // ボス100%スポーン＋ボスアイテム交換イベント。
@@ -354,6 +335,14 @@ function App() {
   const toggleWatchBoard = useCallback((itemId) => {
     setWatchBoardIds(prev => prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]);
   }, []);
+
+  // アイテム一覧タブを開いた / APIデータ再取得時に、ウォッチボード・展開中チャートの履歴を取得
+  // （loadAPIData が成功時に historyCache/historyReqRef をクリア → lastLoaded 変化でここが再実行され最新化）
+  useEffect(() => {
+    if (activeTab !== 'items') return;
+    watchBoardIds.forEach(id => loadItemHistory(id));
+    if (historyOpenId) loadItemHistory(historyOpenId);
+  }, [activeTab, watchBoardIds, loadItemHistory, lastLoaded, historyOpenId]);
 
   const pinItem = useCallback((item) => {
     setPinnedItems(prev => {
