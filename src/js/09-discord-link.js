@@ -107,6 +107,44 @@ function formatDiscordSyncTime(iso) {
   return d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
 }
 
+/**
+ * テキストをクリップボードへ。クリック直後に同期で execCommand('copy') を試す
+ * （file:// や埋め込みブラウザでは navigator.clipboard が拒否されることがあるため）。だめなら navigator.clipboard
+ */
+async function copyTextToClipboard(text) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (ok) return true;
+  } catch {}
+  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+}
+
+/** コマンドを `code` 表示＋コピー ボタンで出す（例: /raid link） */
+function DiscordCommandChip({ command }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const handleCopy = async () => {
+    if (!(await copyTextToClipboard(command))) return;
+    setCopied(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 1500);
+  };
+  return (
+    <span className="discord-cmd">
+      <code>{command}</code>
+      <button type="button" className="discord-cmd-copy" onClick={handleCopy}
+        title={copied ? 'コピーしました' : `${command} をコピー`} aria-label={`${command} をコピー`}>
+        <Icon name={copied ? 'check' : 'copy'} size={12} color={copied ? 'var(--state-ok)' : 'currentColor'} />
+      </button>
+    </span>
+  );
+}
+
 /** 設定タブ「Discord 連携」セクション。getShareData() は現在の共有データ v1 を返す */
 function DiscordLinkSection({ getShareData }) {
   const [link, setLink] = useState(loadDiscordLink);
@@ -132,6 +170,7 @@ function DiscordLinkSection({ getShareData }) {
 
   const linked = !!link.token;
   const botUrl = getDiscordBotUrl(link);
+  const codeReady = /^\d{6}$/.test(normalizeDiscordLinkCode(code));
 
   const handleLink = async () => {
     const c = normalizeDiscordLinkCode(code);
@@ -183,8 +222,16 @@ function DiscordLinkSection({ getShareData }) {
   const hint = { fontSize: 11, color: 'var(--text-dim)' };
 
   return (
-    <div className="section">
-      <div className="section-title"><Icon name="link" size={14} color="var(--accent)" /> Discord 連携</div>
+    <div className="section discord-link">
+      <div className="section-title" style={{ flexWrap: 'wrap' }}>
+        <Icon name="link" size={14} color="var(--accent)" /> Discord 連携
+        {msg && (
+          <span className="discord-link-msg" style={{ color: msg.kind === 'error' ? 'var(--danger-text)' : 'var(--state-ok-text)' }}>
+            <Icon name={msg.kind === 'error' ? 'alert-triangle' : 'circle-check'} size={12} color="currentColor" />
+            {msg.text}
+          </span>
+        )}
+      </div>
 
       {!DISCORD_BOT_URL && (
         <div style={{ ...rowStyle, marginBottom: 10 }}>
@@ -204,14 +251,15 @@ function DiscordLinkSection({ getShareData }) {
       {!linked ? (
         <div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-            Discord で <code>/raid link</code> を実行すると届く6桁の連携コードを入力してください。進行タスクの目標を Discord の出撃ボードに出せるようになります。
+            Discord で <DiscordCommandChip command="/raid link" /> を実行すると届く6桁の連携コードを入力してください。進行中タスクをお友達と連携できるようになります。
           </div>
           <div style={rowStyle}>
-            <input type="text" inputMode="numeric" autoComplete="one-time-code" value={code} placeholder="482 913"
+            <input type="text" className="discord-code-input" inputMode="numeric" autoComplete="one-time-code" value={code} placeholder="000 000"
               maxLength={12} style={{ width: 120, fontSize: 16, letterSpacing: '0.1em', textAlign: 'center' }}
               onChange={e => setCode(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !busy) handleLink(); }} />
-            <button className="btn btn-yellow" disabled={!!busy} onClick={handleLink}
+              onKeyDown={e => { if (e.key === 'Enter' && codeReady && !busy) handleLink(); }} />
+            <button className="btn btn-yellow" disabled={!codeReady || !!busy} onClick={handleLink}
+              title={codeReady ? undefined : '6桁の連携コードを入力してください'}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <Icon name={busy === 'link' ? 'refresh' : 'link'} size={13} color="currentColor" />
               {busy === 'link' ? '連携中…' : '連携する'}
@@ -250,12 +298,6 @@ function DiscordLinkSection({ getShareData }) {
         </div>
       )}
 
-      {msg && (
-        <div style={{ marginTop: 8, fontSize: 12, color: msg.kind === 'error' ? 'var(--danger-text)' : 'var(--state-ok-text)' }}>
-          {msg.text}
-        </div>
-      )}
-
       <div style={{ ...rowStyle, marginTop: 10 }}>
         <button className="btn btn-gray btn-sm"
           title="Discord 出撃共有で送る内容（進行タスクの目標・全マップ分）を JSON で保存して確認する"
@@ -263,7 +305,7 @@ function DiscordLinkSection({ getShareData }) {
           style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <Icon name="upload" size={11} color="currentColor" /> 送る内容を確認
         </button>
-        <span style={hint}>送るのは進行タスク（ボード登録済み・未完了）の目標だけ。連携トークンはバックアップに含まれません</span>
+        <span style={hint}>送るのは進行タスク（ボード登録済み・未完了）の目標だけ</span>
       </div>
     </div>
   );
