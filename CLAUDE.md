@@ -23,7 +23,7 @@
 
 | ファイル | 内容 | 行数目安 |
 |---|---|---|
-| `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ画像定数, GraphQLクエリ | ~290 |
+| `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ一覧 `RAID_MAPS`・マップ名正規化 `normalizeRaidMapName`・目標チェックキー `raidObjKey`・マップ画像定数, GraphQLクエリ | ~290 |
 | `01-api.js` | fetchGraphQL + json.tarkov.dev フォールバック変換 | ~410 |
 | `02-translations.js` | translateObjective, getObjTypeLabel | ~75 |
 | `03-storage.js` | loadState, saveState, 全データバックアップ（exportAllData/restoreAllData）, IndexedDB（差し替えマップ画像）, モードシステム | ~200 |

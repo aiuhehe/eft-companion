@@ -11,7 +11,7 @@
           if (!pinnedTaskIds.includes(task.id)) return;
           if (completedTaskIds.includes(task.id)) return;
           (task.objectives || []).forEach(obj => {
-            if ((obj.maps || []).some(m => m.name === selected)) {
+            if (normalizeRaidMaps(obj.maps).includes(selected)) {
               tasksForMap.push({ task, obj });
             }
           });
@@ -27,8 +27,7 @@
 
         const unpinned = tasksForMap.filter(({ task, obj }) => {
           if (pinnedObjIds.has(obj.id)) return false;
-          const objKey = obj.id || (task.id + obj.type + (obj.item?.id || obj.questItem?.id || obj.target || ''));
-          return !raidObjChecked[task.id]?.[objKey];
+          return !raidObjChecked[task.id]?.[raidObjKey(task.id, obj)];
         });
         const pinned   = tasksForMap.filter(({ obj }) =>  pinnedObjIds.has(obj.id));
 
@@ -388,10 +387,9 @@
             if (obj.markerItem?.name) return obj.markerItem.name;
             return obj.description || '';
           };
-          const getObjKey = (taskId, obj) => obj.id || (taskId + obj.type + (obj.item?.id || obj.questItem?.id || obj.target || ''));
-          const isObjChecked  = (taskId, obj) => !!(raidObjChecked[taskId]?.[getObjKey(taskId, obj)]);
+          const isObjChecked  = (taskId, obj) => !!(raidObjChecked[taskId]?.[raidObjKey(taskId, obj)]);
           const toggleObjCheck = (taskId, obj) => {
-            const k = getObjKey(taskId, obj);
+            const k = raidObjKey(taskId, obj);
             setRaidObjChecked(prev => {
               const tc = { ...(prev[taskId] || {}) };
               if (tc[k]) delete tc[k]; else tc[k] = true;
@@ -439,7 +437,7 @@
                     const parts = obj.bodyParts?.length ? `(${obj.bodyParts.join('/')})` : '';
                     const dist  = obj.distance ? `${obj.distance.compareMethod}${obj.distance.value}m` : '';
                     const popupChecked = isObjChecked(t.id, obj);
-                    const isOnCurrentMap = maps.includes(selected);
+                    const isOnCurrentMap = normalizeRaidMaps(obj.maps).includes(selected);
                     const existingPins = pinsByObjId[obj.id] || [];
                     return (
                       <div key={obj.id || oi} style={{ padding: '6px 8px',

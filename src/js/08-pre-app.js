@@ -8,7 +8,7 @@
 // 現在: ハロウィン2026（情報源: Fandom Wiki 各クエストページ・2026-10-30 時点。
 //   High-Risk, High-Reward 以降・Prototyping 以降は tarkovhead.com / tarkov.help / skycoach.gg・2026-10-31 時点）
 // objectives の追加フィールド（カスタムタスク化で使う。表示には影響しない）:
-//   maps: 出撃準備タブのマップ名（RAID_MAPS の英語名。Infected Factory→'Factory'、Infected Lab→'The Lab'）
+//   maps: 出撃準備タブのマップ名（RAID_MAPS の英語名。Infected Factory→'Factory'、Infected Lab→'The Lab'。正規化は normalizeRaidMapName）
 //   count / target（kill）/ itemId・itemName・fir（アイテム系）/ category（「任意の○○」系）/ questItemName（findQuestItem）
 // rewardItems の id は tarkov.dev のアイテムID（アイコン表示・カスタムタスクの報酬に使用）。
 // unlock: { trader, level } があれば「バーター解放」報酬として扱う。
