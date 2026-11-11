@@ -331,7 +331,7 @@ function DiscordSyncButton({ discord, ready }) {
 function DiscordSyncTime({ discord }) {
   const { link } = discord;
   if (!link.token) return null;
-  return <span className="header-sub">最終同期: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ'}</span>;
+  return <span className="header-sub discord-sync-time">最終同期: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ'}</span>;
 }
 
 /** 設定タブ「Discord 連携」セクション。discord は useDiscordSync の戻り値、getShareData() は現在の共有データ v1 を返す */

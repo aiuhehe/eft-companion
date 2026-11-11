@@ -129,7 +129,7 @@
 
 GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始める（フォールバック切替はコード変更不要）。実装を追加する際はフォールバック時の挙動も考慮すること。
 
-**フォールバック中も全タブが通常表示で動作する**（2026-11-11・Issue #7）。弾薬・プレート・プリセットを含め、タブバーの半透明表示（旧 `restricted`）は廃止。ヘッダーにはフォールバック中のみ情報表示として「JSON API 接続中」（`globe` アイコン・`isFallback`）を出す（警告ではない）。
+**フォールバック中も全タブが通常表示で動作する**（2026-11-11・Issue #7）。弾薬・プレート・プリセットを含め、タブバーの半透明表示（旧 `restricted`）は廃止。ヘッダーにはフォールバック中のみ情報表示として「JSON API 接続中」（`globe` アイコン・`isFallback`）を出す（警告ではない）。**手元で開いたとき（`IS_LOCAL_DEV`＝`file://` か localhost）だけ**で、GitHub Pages 版には出さない（2026-11-12・「最終取得」も同じ）。
 
 **アイテム詳細系クエリのフォールバック（`01-api.js`・2026-10-30）:**
 - `ammo` と、クエリ名が `items` の `ammoPacks` / `armorPlates` / `weapons` / `weaponMods` は `_detectItemQueryKind()` で振り分け、`_loadItemDetailContext(jMode, lang)` の共通データ（翻訳済み items・traders・tasks・hideout と生の barters・crafts）から `_itemDetailTransforms[種別]` / `_transformAmmo` で変換する。**`ammo` / `ammoBox` / `weapons` は実装済み**（2026-11-02・弾薬タブはフォールバック中も通常表示）。**`armorPlate` も実装済み**（2026-11-10・プレートタブもフォールバック中に通常表示）。**`weaponMods` も実装済み**（2026-11-11・プリセットタブもフォールバック中に通常表示。`properties` は `ItemPropertiesWeaponMod` のみ値を持ち他は `{}`）。

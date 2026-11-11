@@ -5,7 +5,7 @@
         <h1 style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 'bold', margin: 0, display:'flex', alignItems:'center', gap:8 }}>
           <Icon name="target" size={22} color="var(--accent)" /> EFT コンパニオン
         </h1>
-        {/* 右側は2段のグリッド: 1段目 [メッセージ][JSON API 接続中][Discord 同期][歯車] / 2段目 [最終取得] と [最終同期] をそれぞれの下に */}
+        {/* 右側は2段のグリッド: 1段目 [メッセージ][JSON API 接続中][Discord 同期][歯車] / 2段目 [最終取得] と [最終同期] をそれぞれの下に（JSON API 接続中・最終取得は手元で開いたときだけ） */}
         <div className="header-right">
           <div className="header-msgs">
             {loadError && (
@@ -21,7 +21,7 @@
             <DiscordSyncMsg msg={discordSync.syncMsg} className="discord-sync-msg" />
           </div>
           <div>
-            {isFallback && !loadError && (
+            {IS_LOCAL_DEV && isFallback && !loadError && (
               <span title="GraphQL API（api.tarkov.dev）が使えないため json.tarkov.dev から取得しています。全タブ通常どおり利用できます。"
                 style={{ color: 'var(--text-dim)', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                 <Icon name="globe" size={12} color="var(--text-dim)" /> JSON API 接続中
@@ -35,7 +35,7 @@
             <Icon name="settings" size={16} color={activeTab==='status' ? 'var(--accent-on)' : 'var(--text-secondary)'} />
           </button>
           <div />
-          <div>{lastLoaded && <span className="header-sub">最終取得: {lastLoaded}</span>}</div>
+          <div>{IS_LOCAL_DEV && lastLoaded && <span className="header-sub">最終取得: {lastLoaded}</span>}</div>
           <div><DiscordSyncTime discord={discordSync} /></div>
           <div />
         </div>
