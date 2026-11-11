@@ -150,6 +150,7 @@ function DiscordCommandChip({ command }) {
 const DISCORD_SYNC_DELAY_MS = 30 * 1000;          // 最後の変更から30秒待ってまとめて送る
 const DISCORD_SHARE_FRESH_MS = 6 * 60 * 60 * 1000; // Bot は6時間で共有データを消すので、それより前に送った内容なら同じでも送り直す
 const DISCORD_RATE_FALLBACK_SEC = 60;              // 429 で Retry-After が読めないときの待ち秒数
+const DISCORD_SYNC_MIN_SPIN_MS = 800;              // 即時同期ボタンの「同期中…」を最低これだけ出す（押した手応え・連打防止）
 
 /** 文字列のハッシュ（16進32文字・cyrb53 系を2つの種で）。前回送った内容と比べるだけなので暗号強度は要らない */
 function _discordHash(str) {
@@ -173,20 +174,18 @@ const raidShareHash = (data) => _discordHash(JSON.stringify({ ...data, createdAt
 /**
  * Discord 連携の状態と自動送信（App の中で1回だけ呼ぶ）。
  * shareData: 現在の共有データ v1（useMemo 済み）／ ready: API のタスクを読み込み済みか（読む前の空の内容は送らない）
- * 戻り値: { link, updateLink, sending, waitSec, syncMsg, flash, syncNow, clearSyncMsg }
+ * 戻り値: { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg }
+ *  - sending: 同期中（即時同期ボタンを押したときは、送らなかったときも最低 DISCORD_SYNC_MIN_SPIN_MS は true）
  *  - syncMsg: { kind: 'error' | 'info', text } 同期状態の欄に出すメッセージ（次に成功したら消す）
- *  - flash: 'sent' | 'same' | '' 即時同期ボタンを押した直後の手応え（2秒）
  */
 function useDiscordSync(shareData, ready) {
   const [link, setLink] = useState(loadDiscordLink);
   const [sending, setSending] = useState(false);
   const [waitSec, setWaitSec] = useState(0);       // 429 で送り直しを待っている残り秒数
   const [syncMsg, setSyncMsg] = useState(null);
-  const [flash, setFlash] = useState('');
   const sendingRef = useRef(false);
   const timerRef = useRef(null);                    // 30秒待ち / 429 の送り直し
   const waitUntilRef = useRef(0);
-  const flashTimerRef = useRef(null);
   const failedHashRef = useRef('');                 // 413/422 になった内容（中身が変わるまで送り直さない）
 
   const shareHash = useMemo(() => (shareData ? raidShareHash(shareData) : ''), [shareData]);
@@ -208,44 +207,52 @@ function useDiscordSync(shareData, ready) {
     setLink(next);
   }, []);
 
-  const showFlash = (kind) => {
-    setFlash(kind);
-    clearTimeout(flashTimerRef.current);
-    flashTimerRef.current = setTimeout(() => setFlash(''), 2000);
-  };
-
   /** 前回送った内容と同じで、Bot 側にまだ残っている（送ってから6時間以内）か */
   const isSameAsSent = (cur, hash) =>
     !!hash && cur.lastShareHash === hash && Date.now() - (Date.parse(cur.lastSentAt) || 0) < DISCORD_SHARE_FRESH_MS;
 
   const doSyncRef = useRef(null);
+  // 同期1回分。重ねて走らないよう sendingRef で鍵をかける（ref なので連打の2回目以降は描画を待たずに弾く）
   const doSync = async (manual) => {
-    if (sendingRef.current) return;                  // 送信中は重ねて送らない
+    if (sendingRef.current) return;                  // 同期中は重ねて送らない
     if (waitUntilRef.current > Date.now()) return;   // 429 の待ち中（送り直しは予約済み）
+    sendingRef.current = true;
+    const started = Date.now();
+    if (manual) setSending(true);                    // 押したら、送らないときも「同期中…」にしてボタンを押せなくする
+    try {
+      await syncOnce(manual);
+    } finally {
+      if (manual) {
+        const rest = DISCORD_SYNC_MIN_SPIN_MS - (Date.now() - started);
+        if (rest > 0) await new Promise(r => setTimeout(r, rest));
+      }
+      sendingRef.current = false; setSending(false);
+    }
+  };
+
+  const syncOnce = async (manual) => {
     clearTimeout(timerRef.current);
     const cur = loadDiscordLink();
     if (!cur.token) return;
     const { shareData: data, shareHash: hash } = latestRef.current;
     if (!data) return;
     if (isSameAsSent(cur, hash)) {
-      // 前回送った内容と同じなら送らない。押したときは「同期済み」を見せ、最終同期日時を今にする
-      if (manual) { updateLink({ lastSyncAt: new Date().toISOString() }); showFlash('same'); }
+      // 前回送った内容と同じなら送らない。押したときは最終同期日時を今にする（「同期中…」の後に日時が変わる）
+      if (manual) updateLink({ lastSyncAt: new Date().toISOString() });
       return;
     }
     if (hash === failedHashRef.current) return;      // 413/422 になった内容は送り直さない（メッセージは出したまま）
     const botUrl = getDiscordBotUrl(cur);
     if (!botUrl) { setSyncMsg({ kind: 'error', text: 'Bot の URL が設定されていないため同期できません' }); return; }
 
-    sendingRef.current = true; setSending(true);
+    setSending(true);
     const r = await discordPutShare(botUrl, cur.token, { ...data, createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
-    sendingRef.current = false; setSending(false);
 
     if (r.status === 'ok') {
       const now = new Date().toISOString();
       updateLink({ lastSyncAt: now, lastSentAt: now, lastShareHash: hash });
       failedHashRef.current = '';
       setSyncMsg(null);
-      if (manual) showFlash('sent');
       // 送っている間に内容が変わっていたら、また30秒後に送る
       if (latestRef.current.shareHash !== hash) timerRef.current = setTimeout(() => doSyncRef.current(false), DISCORD_SYNC_DELAY_MS);
     } else if (r.status === 'unauthorized') {
@@ -283,12 +290,12 @@ function useDiscordSync(shareData, ready) {
     return () => clearInterval(id);
   }, [waiting]);
 
-  useEffect(() => () => { clearTimeout(timerRef.current); clearTimeout(flashTimerRef.current); }, []);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   const syncNow = useCallback(() => { if (ready) doSyncRef.current(true); }, [ready]);
   const clearSyncMsg = useCallback(() => { failedHashRef.current = ''; setSyncMsg(null); }, []);
 
-  return { link, updateLink, sending, waitSec, syncMsg, flash, syncNow, clearSyncMsg };
+  return { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg };
 }
 
 /** 同期メッセージ（ヘッダー・設定タブ共通） */
@@ -304,20 +311,16 @@ function DiscordSyncMsg({ msg, className = 'discord-link-msg', style }) {
 
 /** ヘッダーの即時同期ボタン（連携中だけ出す）。メッセージは DiscordSyncMsg、最終同期は DiscordSyncTime で別に置く（ヘッダーの2段の並びに合わせるため） */
 function DiscordSyncButton({ discord, ready }) {
-  const { link, sending, waitSec, flash, syncNow } = discord;
+  const { link, sending, waitSec, syncNow } = discord;
   if (!link.token) return null;
   const waiting = waitSec > 0;
-  const label = sending ? '送信中…'
-    : waiting ? `待機中（${waitSec}秒）`
-    : flash === 'sent' ? '同期しました'
-    : flash === 'same' ? '同期済み（変更なし）'
-    : 'Discord 同期';
+  const label = sending ? '同期中…' : waiting ? `待機中（${waitSec}秒）` : 'Discord 同期';
   const lastSync = link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ同期していません';
   return (
     <button className="btn btn-yellow discord-sync-btn" onClick={syncNow} disabled={sending || waiting || !ready}
       title={`Discord の出撃ボードへ今すぐ送ります（変更は30秒後に自動でも送られます）
 最終同期日時: ${lastSync}`}>
-      <Icon name={flash && !sending ? 'check' : 'refresh'} size={14} color="currentColor"
+      <Icon name="refresh" size={14} color="currentColor"
         style={sending ? { animation: 'spin 1s linear infinite' } : undefined} />
       {label}
     </button>
