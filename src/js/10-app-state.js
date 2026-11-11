@@ -65,7 +65,16 @@ function App() {
   const [lastLoaded, setLastLoaded] = useState(saved.lastLoaded || null);
 
   // UI
-  const [activeTab, setActiveTab] = useState('status');
+  // 初期タブは URL ハッシュから（#armor など。不正値・空なら設定タブ）— Issue #26
+  const [activeTab, setActiveTab] = useState(getTabFromHash);
+  // タブ切替のたびにハッシュを置き換える（履歴は積まない）
+  useEffect(() => { writeTabHash(activeTab); }, [activeTab]);
+  // URL 欄でハッシュを手で書き換えたときも追従する
+  useEffect(() => {
+    const onHashChange = () => setActiveTab(getTabFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
   const [hideoutMode, setHideoutMode] = useState('next');
   const [searchQuery, setSearchQuery] = useState('');
   const itemSearchRef = useRef(null);

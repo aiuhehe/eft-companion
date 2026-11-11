@@ -760,3 +760,42 @@ function caliberToMm(cal) {
   return n >= 100 ? n / 100 : n;
 }
 
+
+// ── タブ定義（タブバーの並び順）。設定タブ 'status' はヘッダーの歯車ボタンなのでここには含めない ──
+const TAB_DEFS = [
+  { id:'wipeflow',icon:'calendar-plus', label:'プラン',       full:'序盤フロー' },
+  { id:'advisor', icon:'chart-bar',     label:'トレーダー', full:'トレーダー解放', plan:true },
+  { id:'hideout', icon:'home',          label:'ハイドアウト',full:'ハイドアウト', plan:true },
+  { id:'barter',  icon:'shopping-cart', label:'欲しい物',   full:'欲しいものリスト', plan:true },
+  { id:'tasks',   icon:'list-check',    label:'タスク',     full:'タスク検索', plan:true },
+  { id:'raid',    icon:'backpack',      label:'出撃準備',   full:'出撃準備チェック' },
+  { id:'maps',    icon:'map',           label:'マップ',     full:'マップ・ピン登録' },
+  { id:'items',   icon:'search',        label:'アイテム',   full:'アイテム一覧' },
+  { id:'ammo',    icon:'target',        label:'弾薬',       full:'弾薬一覧' },
+  { id:'armor',   icon:'shield',        label:'プレート',   full:'アーマープレート一覧' },
+  { id:'presets', icon:'tool',          label:'プリセット', full:'武器プリセット比較' },
+  { id:'keys',    icon:'key',           label:'鍵',         full:'鍵一覧' },
+  { id:'ocr',     icon:'camera',        label:'在庫',       full:'スクリーンショット登録' },
+  { id:'journal', icon:'book',          label:'日誌',       full:'活動ジャーナル' },
+  { id:'event',   icon:'trophy',        label:'イベント',   full:'イベント' },
+];
+const VALID_TAB_IDS = new Set(['status', ...TAB_DEFS.map(t => t.id)]);
+
+// ── 開いているタブを URL ハッシュに持たせる（Issue #26）──
+// eft-tool.html#armor で開けばプレートタブから始まる。不正値・空なら設定タブ。
+// localStorage には保存しない（リロード・モード切替は URL が残るので同じタブで再開できる）。
+function getTabFromHash() {
+  let id = '';
+  try { id = decodeURIComponent((window.location.hash || '').replace(/^#/, '')); } catch { id = ''; }
+  return VALID_TAB_IDS.has(id) ? id : 'status';
+}
+// 履歴を積まずにハッシュだけ書き換える（「戻る」でタブ間を行き来させない）
+function writeTabHash(id) {
+  if (window.location.hash === '#' + id) return;
+  try {
+    history.replaceState(history.state, '', '#' + id);
+  } catch {
+    // file:// などで replaceState が拒否された場合もハッシュのみの置換なら再読込は起きない
+    try { window.location.replace('#' + id); } catch {}
+  }
+}
