@@ -802,6 +802,27 @@
       .slice(0, 10);
   }, [apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidTaskSearch]);
 
+  // カスタムタスクのアイテム欄の候補: アイテム一覧 ＋ クエストアイテム（タスクの目標に含まれる questItem。全員共通のIDがある）（Issue #43）
+  const itemPickCandidates = useMemo(() => {
+    const list = (apiData.items || []).map(it => ({ id: it.id, name: it.name || '', shortName: it.shortName || '', iconLink: it.iconLink || '', quest: false }));
+    const seen = new Set();
+    apiData.tasks.forEach(t => (t.objectives || []).forEach(o => {
+      const q = o.questItem;
+      if (q?.id && q.name && !seen.has(q.id)) {
+        seen.add(q.id);
+        list.push({ id: q.id, name: q.name, shortName: q.shortName || '', iconLink: q.iconLink || '', quest: true });
+      }
+    }));
+    return list;
+  }, [apiData.items, apiData.tasks]);
+  const searchItemPickCandidates = (query, limit = 8) => {
+    const low = (query || '').trim().toLowerCase();
+    if (!low) return [];
+    return itemPickCandidates
+      .filter(c => c.name.toLowerCase().includes(low) || c.shortName.toLowerCase().includes(low))
+      .slice(0, limit);
+  };
+
   const killTargets = useMemo(() => {
     const seen = new Set();
     apiData.tasks.forEach(t => (t.objectives || []).forEach(o => {
