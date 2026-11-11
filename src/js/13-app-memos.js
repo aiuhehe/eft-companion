@@ -738,17 +738,7 @@
 
   // ── 出撃準備 ──
   const raidObjectives = useMemo(() => {
-    const classifyObj = (type, foundInRaid) => {
-      // findItem / giveItem は foundInRaid フラグで分類（giveItem FIR も収集扱い）
-      if (type === 'findItem') return foundInRaid ? 'collect' : 'bring';
-      if (type === 'giveItem') return 'bring';
-      if (type === 'findQuestItem') return 'collect';
-      if (type === 'mark' || type === 'plantItem') return 'place';
-      if (type === 'kill' || type === 'shoot') return 'kill';
-      if (type === 'extract') return 'extract';
-      if (type === 'locate' || type === 'visit') return 'locate';
-      return null;
-    };
+    const classifyObj = classifyRaidObj; // 00-constants.js（共有データと共通）
     const allTasks = [...apiData.tasks, ...customTasks];
     const activeTasks = allTasks.filter(t =>
       pinnedTaskIds.includes(t.id) && !completedTaskIds.includes(t.id)

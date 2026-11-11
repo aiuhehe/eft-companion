@@ -87,6 +87,19 @@ const normalizeRaidMaps = (maps) =>
 const raidObjKey = (taskId, obj) =>
   obj.id || (taskId + obj.type + (obj.item?.id || obj.questItem?.id || obj.target || ''));
 
+/** 目標の種別 → 出撃準備タブの分類（bring/collect/place/kill/extract/locate）。対象外は null。共有データ（buildRaidShareData）と共通 */
+const classifyRaidObj = (type, foundInRaid) => {
+  // findItem は foundInRaid フラグで分類
+  if (type === 'findItem') return foundInRaid ? 'collect' : 'bring';
+  if (type === 'giveItem') return 'bring';
+  if (type === 'findQuestItem') return 'collect';
+  if (type === 'mark' || type === 'plantItem') return 'place';
+  if (type === 'kill' || type === 'shoot') return 'kill';
+  if (type === 'extract') return 'extract';
+  if (type === 'locate' || type === 'visit') return 'locate';
+  return null;
+};
+
 // マップタブで扱うマップと画像ファイル（キーは RAID_MAPS と同じ名前）
 const RAID_MAP_IMAGE_FILES = {
   'Customs':           'Customs.png',

@@ -23,7 +23,7 @@
 
 | ファイル | 内容 | 行数目安 |
 |---|---|---|
-| `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ一覧 `RAID_MAPS`・マップ名正規化 `normalizeRaidMapName`・目標チェックキー `raidObjKey`・マップ画像定数, GraphQLクエリ | ~290 |
+| `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ一覧 `RAID_MAPS`・マップ名正規化 `normalizeRaidMapName`・目標チェックキー `raidObjKey`・目標分類 `classifyRaidObj`・マップ画像定数, GraphQLクエリ | ~290 |
 | `01-api.js` | fetchGraphQL + json.tarkov.dev フォールバック変換 | ~410 |
 | `02-translations.js` | translateObjective, getObjTypeLabel | ~75 |
 | `03-storage.js` | loadState, saveState, 全データバックアップ（exportAllData/restoreAllData）, IndexedDB（差し替えマップ画像）, モードシステム | ~200 |
@@ -33,6 +33,7 @@
 | `07-charts.js` | FleaHistoryChart, MultiLineFleaChart (JSX) | ~295 |
 | `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`） | ~135 |
 | `09-manual-unlocks.js` | 手動登録したタスク↔アイテム紐づけの読み書き | ~35 |
+| `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData`・JSON 保存 `downloadRaidShareData` | ~110 |
 | `10-app-state.js` | `function App() {` + 全useState/useRef + 初期effect | ~740 |
 | `11-app-effects.js` | ジャーナル/タスクタブ state + 永続化effect | ~175 |
 | `12-app-callbacks.js` | ammo memo + plan/journal/wipe callbacks + API読込 | ~500 |
