@@ -45,7 +45,7 @@
                     </label>
                   ))}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>※ 変更後はAPIデータを再取得してください</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>※ 変更後はページをリロードしてください</div>
               </div>
               <div>
                 <div className="setting-label">プレイヤーレベル</div>
@@ -100,10 +100,7 @@
           </div>
 
           {/* Discord 出撃共有の連携（09-discord-link.js） */}
-          <DiscordLinkSection getShareData={() => buildRaidShareData({
-            tasks: apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked,
-            activeMode, gameMode, uiLang, playerLevel,
-          })} />
+          <DiscordLinkSection discord={discordSync} getShareData={() => raidShareData} />
 
           {/* Trader Status */}
           <div className="section">
