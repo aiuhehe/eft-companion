@@ -24,6 +24,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: bash build.sh --dist
+        env:
+          # Discord 出撃共有 Bot の URL（リポジトリのソースには書かない・未設定なら設定タブに入力欄が出る）
+          DISCORD_BOT_URL: ${{ secrets.DISCORD_BOT_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

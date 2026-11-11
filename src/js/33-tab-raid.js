@@ -341,17 +341,6 @@
                   <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>タスク検索タブのボードと共有</span>
                 </span>
                 <span style={{ display: 'inline-flex', gap: 6, flexShrink: 0 }}>
-                {/* Discord 出撃共有で送る内容（共有データ v1）を JSON で保存。#32 で設定タブへ移す予定の仮置き */}
-                <button className="btn btn-gray btn-sm"
-                  title="Discord 出撃共有で送る内容（進行タスクの目標・全マップ分）を JSON で保存して確認する"
-                  onClick={() => downloadRaidShareData(buildRaidShareData({
-                    tasks: apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked,
-                    activeMode, gameMode, uiLang, playerLevel,
-                  }))}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                  <Icon name="upload" size={11} color="currentColor" />
-                  送る内容を確認
-                </button>
                 <button className="btn btn-gray btn-sm"
                   onClick={() => {
                     if (customTaskFormOpen) {
