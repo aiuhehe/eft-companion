@@ -1,6 +1,10 @@
 # Discord 出撃共有 Bot 設計書
 
-> **この文書の位置づけ**: EFT コンパニオン（このアプリ）と Discord Bot を連携させ、仲間の出撃準備の目標を Discord に集める機能の設計書。Bot 本体のリポジトリを作成するまではここに置く。Bot のリポジトリを作成したら Bot の内部設計はそちらへ移し、ここにはアプリと Bot の取り決めである「共有データ形式（§4）」と「API（§11.3）」を残す。
+> **この文書の位置づけ**: EFT コンパニオン（このアプリ）と Discord Bot を連携させ、仲間の出撃準備の目標を Discord に集める機能の設計書のうち、**アプリと Bot の両方が使う部分**。
+>
+> 2026-11-11 に Bot のリポジトリ（[aiuhehe/tarkov-raid-bot](https://github.com/aiuhehe/tarkov-raid-bot)・非公開）ができたので、**Bot だけが使う内部設計（§5 全体構成・§6 コマンドと操作・§9 寿命・§10 データ保存）はそちらの `docs/設計書.md` へ移した**。節の番号は両方の文書で共通で、移した節はここに行き先だけを残している。
+>
+> 当初は「共有データ形式（§4）」と「API（§11.3）」だけを残す予定だったが、アプリの仲間のボード（#35）が Discord のボードと同じ表示・合算のルール（§7・§8）を使い、連携・自動送信・ピンの共有（§11）もアプリの動きを決めるので、これらもここに残した（Bot のリポジトリは非公開のため、アプリの Issue から読めるように）。
 >
 > 関連: Issue [aiuhehe/eft-companion#9](https://github.com/aiuhehe/eft-companion/issues/9)（全体の親 Issue）／ [aiuhehe/eft-companion#28](https://github.com/aiuhehe/eft-companion/issues/28)（目標の途中進捗）／ `docs/ステータス・設定機能仕様書.md`・`docs/出撃準備機能仕様書.md`（アプリ側の画面は実装時にこちらへ追記）
 >
@@ -182,88 +186,13 @@ tarkov.dev のデータでは、同じマップの派生版が別のマップと
 
 ## 5. 全体構成
 
-```
-[アプリ（ブラウザ）]                                [Discord]
-        │                                            │ スラッシュコマンド・ボタン・選択メニュー
-        │ HTTPS（連携トークン）で自動送信              ▼
-        └──────────────────────────────▶  [Cloudflare Worker]
-                                               ├─ D1（ボード・参加者・共有データ・連携トークンのハッシュ）
-                                               ├─ R2（サーバーごとのマップ画像）
-                                               └─ Cron Trigger（6時間経ったボードの終了処理）
-```
-
-| 要素 | 内容 |
-|---|---|
-| 方式 | **HTTP Interactions**。コマンドやボタンが押されたときだけ Discord が Worker の URL を呼ぶ。常時起動の PC は不要 |
-| 言語 | TypeScript（Workers） |
-| 署名検証 | Discord からのリクエストは Ed25519 で検証する（Web Crypto） |
-| ボードの更新 | 応答用の一時トークンは15分で切れるため、**ボードの編集は Bot トークンで REST API（メッセージ編集）を呼ぶ**。これで6時間以上でも更新できる |
-| データの保存先 | D1（SQLite 互換）。KV は書き込みの無料枠が小さい（1日1,000件）ため使わない |
-| 画像の保存先 | R2（非公開）。Discord の添付ファイルの URL は時間がたつと失効するため、自前で保存する |
-
-### 5.1 無料枠に収まるか
-
-5人で1日に数回出撃する使い方を想定した見積もり。数字は 2026-11 時点の Workers Free の値で、運用開始前に公式の値で確かめる。
-
-| 項目 | 無料枠 | 見積もり |
-|---|---|---|
-| Worker リクエスト | 1日 10万件 | 数百〜数千件（仲間のボードの30秒ごとの再読み込みを含む） |
-| CPU 時間 | 1回 10ms | JSON の読み込み・検証・合算で数 ms。実装後に計測し、超える場合は合算結果をキャッシュする |
-| D1 | 読み込み 1日500万行 / 書き込み 1日10万行 | 数百〜数千行 |
-| R2 | 保存 10GB | マップ13枚 × 数 MB × サーバー数 ＋ ピンのメモ画像（1枚数百 KB。1000枚でも数百 MB） |
-| Cron Triggers | 利用可 | 15分おきに1回 |
-
-### 5.2 Bot の設定
-
-- OAuth2 のスコープ: `bot` と `applications.commands`
-- 権限: メッセージの送信 / 埋め込みリンク / ファイルの添付（ボードの投稿・編集とマップ画像の添付のため）
-- Gateway の特権インテント（メンバー一覧・メッセージ内容）は**使わない**
+→ Bot リポジトリ（aiuhehe/tarkov-raid-bot・非公開）の `docs/設計書.md` §5 に移した。Cloudflare Workers（HTTP Interactions）＋ D1 ＋ R2 ＋ Cron Trigger の構成、無料枠の見積もり、Bot の設定。
 
 ---
 
 ## 6. コマンドと操作
 
-| コマンド・操作 | 内容 |
-|---|---|
-| `/raid link` | 連携用の6桁コード（5分で失効）と「アプリで開く」リンクを、本人にだけ見えるメッセージで返す（§11.1） |
-| `/raid unlink` | 自分の連携トークンをすべて無効にし、共有データも消す |
-| `/raid start` | このチャンネルにボードを作って投稿する。すでにあれば「ボードはここにあります」とリンクを返す。実行した人は自動で参加 |
-| `/raid board` | ボードをいちばん下に投稿し直す（チャンネルが流れて見えなくなったとき用。古いメッセージは「下に移動しました」に書き換える） |
-| `/raid end` | ボードを終了する |
-| ボード **[参加する]** | 自分をボードに加える。未連携・共有データ未着なら「`/raid link` で連携し、アプリで同期をオンにしてください」、満員なら「満員です」と本人にだけ返す |
-| ボード **[抜ける]** | 自分をボードから外す |
-| ボード **マップ選択メニュー** | 「全マップ一覧」か各マップを選ぶ。選ぶとボードがそのマップの表示に切り替わる（全員に同じ表示） |
-| ボード **[地図で見る]** | アプリの仲間のボードを開くリンクボタン（§11.4） |
-| ボード **[終了]** | `/raid end` と同じ |
-
-- 返答はすべて、本人にだけ見えるメッセージか、ボードの編集で行う。チャンネルにメッセージを増やさない。
-- 共有データの登録は Discord 上では行わない（アプリからの自動送信のみ）。そのため入力欄の文字数制限を受けない。
-
-### 6.1 ボードの単位
-
-- **サーバー × チャンネル × `gameMode`（シーズンは `mode` まで）で1枚**。
-- 共有データの `gameMode` がボードと違う人は参加できない（「このボードは PvE 用です」と返す）。
-- ボードの `gameMode` は、最初に参加した人の共有データで決まる（`/raid start` の引数で指定することもできる）。
-
-### 6.2 共有データは人ごとに持つ
-
-- 共有データは**ボードではなく人（＋`gameMode`）ごと**に保存する。1回送れば、別チャンネルのボードに参加しても使える。
-- 自動送信はこの「人ごとの共有データ」を書き換えるだけで、参加中のボードすべてに反映される。
-- ボードには参加者ごとに「14:32 に同期」のように最終同期時刻を出す（アプリを閉じている人のデータが古いことが分かるように）。
-
-### 6.3 マップ画像のアップロード
-
-| コマンド | 内容 |
-|---|---|
-| `/raid mapimage set map:<選択> image:<画像添付>` | そのサーバー用のマップ画像を登録・差し替える |
-| `/raid mapimage remove map:<選択>` | 登録を外す |
-| `/raid mapimage list` | 登録済みのマップ一覧（本人にだけ表示） |
-
-- 実行できる人: 既定は「サーバー管理」権限を持つ人（コマンドの既定権限で制限。サーバー側の設定で特定のロールに広げられる）。
-- Bot は受け取った画像を R2（非公開）にコピーする。形式は PNG / JPEG / WebP、1枚 10MB まで。
-- ボードでマップを選んだときに、その画像を**メッセージに添付して**表示する（embed の画像に `attachment://` で指定）。公開 URL を作らないので、画像はそのチャンネルを見られる人にしか見えない。マップを切り替えたときだけ添付し直し、ボタン操作などの編集では既存の添付を残す。
-- 画像が登録されていないマップは、マップ名と外部の地図ページへのリンクを出す。
-- ピンの座標はアプリ標準のマップ画像に対する比率で持つ（§11.5）。登録する画像は標準の画像と同じ範囲・向きのもの（解像度は問わない）を使う。範囲が違う画像を登録すると、ピンの位置がずれて見える。
+→ Bot リポジトリ（aiuhehe/tarkov-raid-bot・非公開）の `docs/設計書.md` §6 に移した。`/raid link・unlink・start・board・end`、ボードのボタンとマップ選択、ボードの単位（サーバー × チャンネル × gameMode）、`/raid mapimage`（§6.3）。
 
 ---
 
@@ -360,116 +289,13 @@ Bot（Discord のボード）とアプリ（仲間のボード）は、この節
 
 ## 9. 寿命（6時間）
 
-- **最後の操作から6時間**で終了する。
-- 延長される操作: `/raid start`・`/raid board`・ボタン・マップ選択・共有データの受信（参加中のボードすべて）。自動送信は目標に変化があったときしか来ないので、開いたままのブラウザが延長し続けることはない。
-- Cron Trigger（15分おき）が期限切れのボードを探し、メッセージを「このボードは終了しました（最終参加 4人）」に書き換えてから、データを削除する。
-- 人ごとの共有データも、**どのボードからも参照されず、最終更新から6時間経ったら削除**する（個人データを長く残さない）。
-- 連携トークン（`links`）は寿命の対象外。本人が解除するまで残る。
+→ Bot リポジトリ（aiuhehe/tarkov-raid-bot・非公開）の `docs/設計書.md` §9 に移した。ボードは最後の操作から6時間で終了し、どのボードからも参照されない共有データも6時間で消す。連携トークンは解除するまで残る。
 
 ---
 
 ## 10. データ保存（D1）
 
-```sql
--- ボード
-CREATE TABLE boards (
-  id               TEXT PRIMARY KEY,
-  guild_id         TEXT NOT NULL,
-  channel_id       TEXT NOT NULL,
-  game_mode        TEXT NOT NULL,    -- regular / pve / pvp-season
-  app_mode         TEXT,             -- season_N のときだけ（シーズンの区別）
-  message_id       TEXT,             -- ボードのメッセージ
-  selected_map     TEXT,             -- NULL = 全マップ一覧
-  created_at       INTEGER NOT NULL,
-  last_activity_at INTEGER NOT NULL,
-  UNIQUE (guild_id, channel_id, game_mode, app_mode)
-);
-
--- 参加者（1ボード5人まで）
-CREATE TABLE board_members (
-  board_id   TEXT NOT NULL,
-  user_id    TEXT NOT NULL,
-  color_idx  INTEGER NOT NULL,       -- 0〜4
-  joined_at  INTEGER NOT NULL,
-  PRIMARY KEY (board_id, user_id)
-);
-
--- 人ごとの共有データ（最新1件）
-CREATE TABLE shares (
-  user_id    TEXT NOT NULL,
-  game_mode  TEXT NOT NULL,
-  app_mode   TEXT NOT NULL,
-  payload    TEXT NOT NULL,          -- 共有データ JSON（検証済み・整形済み）
-  updated_at INTEGER NOT NULL,
-  PRIMARY KEY (user_id, game_mode, app_mode)
-);
-
--- 連携トークン
-CREATE TABLE links (
-  token_hash  TEXT PRIMARY KEY,      -- トークンそのものは保存しない（SHA-256）
-  user_id     TEXT NOT NULL,
-  created_at  INTEGER NOT NULL,
-  last_used_at INTEGER
-);
--- Bot を使ったことのあるサーバーとメンバー（ピンの共有先の候補・§11.5）
-CREATE TABLE guild_members (
-  guild_id     TEXT NOT NULL,
-  user_id      TEXT NOT NULL,
-  guild_name   TEXT NOT NULL,
-  last_seen_at INTEGER NOT NULL,     -- そのサーバーで最後に /raid コマンドかボタンを使った日時
-  verified_at  INTEGER,              -- Discord に在籍を最後に確かめた日時
-  PRIMARY KEY (guild_id, user_id)
-);
-
--- サーバーで共有するマップピン（§11.5）
-CREATE TABLE pins (
-  guild_id     TEXT NOT NULL,
-  id           TEXT NOT NULL,        -- アプリが作るピン ID
-  map_name     TEXT NOT NULL,        -- RAID_MAPS の名前
-  task_id      TEXT NOT NULL,
-  objective_id TEXT NOT NULL,
-  x            REAL NOT NULL,        -- 標準マップ画像の幅に対する比率（0〜1）
-  y            REAL NOT NULL,        -- 標準マップ画像の高さに対する比率（0〜1）
-  memo         TEXT,
-  required_items TEXT,               -- JSON 配列（アイテム ID・登録タスク品 ID）
-  images       TEXT,               -- JSON 配列 [{ id, name }]（画像本体は R2）
-  created_by   TEXT NOT NULL,
-  updated_by   TEXT NOT NULL,
-  updated_at   INTEGER NOT NULL,
-  deleted_at   INTEGER,              -- 削除から30日は残し、アプリから元に戻せる
-  PRIMARY KEY (guild_id, id)
-);
-CREATE INDEX pins_by_update ON pins (guild_id, updated_at);
-
--- サーバーで共有する登録タスク品（API に無いクエストアイテム等。ピンから参照）
-CREATE TABLE guild_items (
-  guild_id     TEXT NOT NULL,
-  id           TEXT NOT NULL,        -- citem_…
-  name         TEXT NOT NULL,
-  short_name   TEXT,
-  icon         TEXT,                 -- 128px PNG の dataURL（数十 KB まで）
-  updated_by   TEXT NOT NULL,
-  updated_at   INTEGER NOT NULL,
-  deleted_at   INTEGER,
-  PRIMARY KEY (guild_id, id)
-);
-
-CREATE TABLE link_codes (
-  code        TEXT PRIMARY KEY,      -- 6桁・5分で失効・1回限り
-  user_id     TEXT NOT NULL,
-  expires_at  INTEGER NOT NULL
-);
-
--- サーバーごとのマップ画像（画像本体は R2）
-CREATE TABLE map_images (
-  guild_id    TEXT NOT NULL,
-  map_name    TEXT NOT NULL,         -- RAID_MAPS の名前
-  r2_key      TEXT NOT NULL,
-  content_type TEXT NOT NULL,
-  updated_at  INTEGER NOT NULL,
-  PRIMARY KEY (guild_id, map_name)
-);
-```
+→ Bot リポジトリ（aiuhehe/tarkov-raid-bot・非公開）の `docs/設計書.md` §10 に移した。ボード・参加者・共有データ・連携トークン（ハッシュ）・連携コード・ピン・マップ画像のテーブル定義。
 
 ---
 

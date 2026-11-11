@@ -85,7 +85,7 @@
 | 鍵一覧 | `docs/鍵一覧機能仕様書.md` |
 | 在庫（スクリーンショット登録・OCR） | `docs/在庫機能仕様書.md` |
 | マップ | `docs/マップ機能仕様書.md` |
-| Discord 出撃共有（Bot 連携・共有データ形式・API） | `docs/Discord出撃共有Bot設計書.md` |
+| Discord 出撃共有（Bot 連携・共有データ形式・ボード表示・合算・API。Bot の内部設計は aiuhehe/tarkov-raid-bot の `docs/設計書.md`） | `docs/Discord出撃共有Bot設計書.md` |
 | （GitHub Actions）Discord 通知 | `docs/Discord通知仕様書.md` |
 
 > **JSXソース分割について（2026-07-03）**
