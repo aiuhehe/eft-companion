@@ -58,7 +58,7 @@
           { id:'items',   icon:'search',        label:'アイテム',   full:'アイテム一覧' },
           { id:'ammo',    icon:'target',        label:'弾薬',       full:'弾薬一覧' },
           { id:'armor',   icon:'shield',        label:'プレート',   full:'アーマープレート一覧' },
-          { id:'presets', icon:'tool',           label:'プリセット', full:'武器プリセット比較',   restricted:true },
+          { id:'presets', icon:'tool',           label:'プリセット', full:'武器プリセット比較' },
           { id:'keys',    icon:'key',           label:'鍵',         full:'鍵一覧' },
           { id:'ocr',     icon:'camera',        label:'在庫',       full:'スクリーンショット登録' },
           { id:'journal', icon:'book',          label:'日誌',       full:'活動ジャーナル' },

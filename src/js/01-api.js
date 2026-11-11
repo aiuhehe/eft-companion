@@ -118,12 +118,18 @@ function _transformTraders(data) {
   return { traders };
 }
 
-function _transformItems(data) {
-  const rawItems = data?.items ?? {};
+// カテゴリID → 名前（翻訳済み itemCategories から。未翻訳なら normalizedName を整形）
+function _buildCategoryNameMap(data) {
   const catMap = {};
   Object.values(data?.itemCategories ?? {}).forEach(c => {
     if (c?.id) catMap[c.id] = c.name || _slugToTitle(c.normalizedName) || c.id;
   });
+  return catMap;
+}
+
+function _transformItems(data) {
+  const rawItems = data?.items ?? {};
+  const catMap = _buildCategoryNameMap(data);
 
   const items = Object.values(rawItems).map(item => ({
     id: item.id,
@@ -415,8 +421,7 @@ function _detectItemQueryKind(query) {
 
 const _hasType = (item, type) => (item.types || []).includes(type);
 
-// 種別ごとの変換（ctx = _loadItemDetailContext の結果）。
-// weaponMods は未実装で、従来どおり空配列を返す（タブ側は空表示で許容）
+// 種別ごとの変換（ctx = _loadItemDetailContext の結果）
 const _itemDetailTransforms = {
   // ammoPacks: containsItems の item は ID 文字列 → { id } に整形
   ammoBox: ({ items, tradersById, tasksById, acquisitions }) => ({
@@ -487,7 +492,31 @@ const _itemDetailTransforms = {
       };
     }),
   }),
-  weaponMods: ctx => ({ items: [] }),
+  // weaponMods（types: [mods]）: プリセットタブの理論値・おすすめモッド用。
+  // categories は ID 配列 → [{ name }]（先頭が最も具体的なカテゴリで GraphQL と同じ順）。
+  // GraphQL クエリは `... on ItemPropertiesWeaponMod` のみ指定しているため、Magazine / Scope /
+  // Barrel 等の properties は空オブジェクトにして GraphQL 稼働時と同じ集計結果にする
+  weaponMods: ({ itemsData, items, tradersById, tasksById }) => {
+    const catMap = _buildCategoryNameMap(itemsData);
+    return {
+      items: items.filter(it => _hasType(it, 'mods')).map(it => {
+        const p = it.properties || {};
+        return {
+          id: it.id,
+          name: it.name || '',
+          shortName: it.shortName || '',
+          iconLink: it.iconLink || '',
+          categories: (it.categories || []).map(cId => ({ name: catMap[cId] || cId })),
+          avg24hPrice: it.avg24hPrice ?? null,
+          buyFor: _makeBuyFor(it, tradersById, tasksById),
+          weight: it.weight ?? null,
+          properties: p.propertiesType === 'ItemPropertiesWeaponMod'
+            ? { ergonomics: p.ergonomics ?? 0, recoilModifier: p.recoilModifier ?? 0, accuracyModifier: p.accuracyModifier ?? 0 }
+            : {},
+        };
+      }),
+    };
+  },
 };
 
 // ammo: 弾の性能値は properties から取る。ItemPropertiesAmmo のみに絞る
