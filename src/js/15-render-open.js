@@ -48,23 +48,7 @@
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid #2d3748', marginBottom: 16, flexWrap: 'nowrap', overflowX: 'auto' }}>
-        {[
-          { id:'wipeflow',icon:'calendar-plus', label:'プラン',       full:'序盤フロー' },
-          { id:'advisor', icon:'chart-bar',     label:'トレーダー', full:'トレーダー解放', plan:true },
-          { id:'hideout', icon:'home',          label:'ハイドアウト',full:'ハイドアウト', plan:true },
-          { id:'barter',  icon:'shopping-cart', label:'欲しい物',   full:'欲しいものリスト', plan:true },
-          { id:'tasks',   icon:'list-check',    label:'タスク',     full:'タスク検索', plan:true },
-          { id:'raid',    icon:'backpack',      label:'出撃準備',   full:'出撃準備チェック' },
-          { id:'maps',    icon:'map',           label:'マップ',     full:'マップ・ピン登録' },
-          { id:'items',   icon:'search',        label:'アイテム',   full:'アイテム一覧' },
-          { id:'ammo',    icon:'target',        label:'弾薬',       full:'弾薬一覧' },
-          { id:'armor',   icon:'shield',        label:'プレート',   full:'アーマープレート一覧' },
-          { id:'presets', icon:'tool',           label:'プリセット', full:'武器プリセット比較' },
-          { id:'keys',    icon:'key',           label:'鍵',         full:'鍵一覧' },
-          { id:'ocr',     icon:'camera',        label:'在庫',       full:'スクリーンショット登録' },
-          { id:'journal', icon:'book',          label:'日誌',       full:'活動ジャーナル' },
-          { id:'event',   icon:'trophy',        label:'イベント',   full:'イベント' },
-        ].map(t => (
+        {TAB_DEFS.map(t => (
           <div key={t.id} className={`tab ${activeTab === t.id ? 'active' : ''}`}
             onClick={() => setActiveTab(t.id)}
             title={t.full}>

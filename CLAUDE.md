@@ -31,7 +31,7 @@
 | `05-icons.js` | IP(SVGパス) + Icon コンポーネント (JSX) | ~75 |
 | `06-themes.js` | THEMES + applyTheme | ~16 |
 | `07-charts.js` | FleaHistoryChart, MultiLineFleaChart (JSX) | ~295 |
-| `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions | ~135 |
+| `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`） | ~135 |
 | `09-manual-unlocks.js` | 手動登録したタスク↔アイテム紐づけの読み書き | ~35 |
 | `10-app-state.js` | `function App() {` + 全useState/useRef + 初期effect | ~740 |
 | `11-app-effects.js` | ジャーナル/タスクタブ state + 永続化effect | ~175 |
