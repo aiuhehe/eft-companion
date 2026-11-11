@@ -15,8 +15,9 @@
             </span>
           )}
           {isFallback && !loadError && (
-            <span style={{ color: 'var(--text-dim)', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-              <Icon name="alert-triangle" size={12} color="var(--text-dim)" /> 一部機能制限中
+            <span title="GraphQL API（api.tarkov.dev）が使えないため json.tarkov.dev から取得しています。全タブ通常どおり利用できます。"
+              style={{ color: 'var(--text-dim)', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              <Icon name="globe" size={12} color="var(--text-dim)" /> JSON API 接続中
             </span>
           )}
           <button className="btn btn-yellow" onClick={loadAPIData} disabled={loading} style={{display:'inline-flex',alignItems:'center',gap:6}}>
@@ -66,11 +67,10 @@
         ].map(t => (
           <div key={t.id} className={`tab ${activeTab === t.id ? 'active' : ''}`}
             onClick={() => setActiveTab(t.id)}
-            title={t.full}
-            style={isFallback && t.restricted ? { opacity: 0.45 } : undefined}>
+            title={t.full}>
             <div style={{position:'relative',display:'inline-flex'}}>
               <Icon name={t.icon} size={24}
-                color={isFallback && t.restricted ? 'var(--text-dim)' : activeTab===t.id ? 'var(--accent)' : 'var(--text-secondary)'} />
+                color={activeTab===t.id ? 'var(--accent)' : 'var(--text-secondary)'} />
               {t.plan && <span style={{position:'absolute',top:-4,right:-5,fontSize:10,fontWeight:'bold',color:'var(--accent)',lineHeight:1}}>+</span>}
             </div>
             {t.label}
