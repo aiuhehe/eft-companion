@@ -514,6 +514,7 @@ function App() {
   const [customTaskEditId, setCustomTaskEditId] = useState(null); // null=新規, string=編集中のタスクID
   const [customFormTraderOpen, setCustomFormTraderOpen] = useState(false);
   const [customFormItemSearchIdx, setCustomFormItemSearchIdx] = useState(-1); // 開いているアイテム検索ドロップダウンの目標インデックス（-1=閉）
+  const [ocrItemPickKey, setOcrItemPickKey] = useState(''); // OCR その場フォームで開いているアイテム候補（`${行}-${目標}`・''=閉）
   const [collectViewMode, setCollectViewMode] = useState('normal'); // 収集セクション表示モード: 'normal'|'2col'|'3col'|'hidden'
   const [customTaskSectionOpen, setCustomTaskSectionOpen] = useState(true); // カスタムタスクカード一覧の開閉
   const [apiTaskToUnpin, setApiTaskToUnpin] = useState(null); // APIタスク上書き保存後にアンピンするID
@@ -521,12 +522,16 @@ function App() {
   const openCustomTaskEdit = useCallback((taskId) => {
     const ct = customTasks.find(t => t.id === taskId);
     if (!ct) return;
+    // 旧形式の手入力アイテム（仮ID custom_item_…）は未選択扱いにして、フォームで候補から選び直させる（Issue #43）
+    const realItemId = (id) => (id && !String(id).startsWith('custom_item_')) ? id : null;
     const objs = (ct.objectives || []).map(o => {
       const maps = normalizeRaidMaps(o.maps); // フォームのマップボタン（RAID_MAPS）と揃える
+      if (o.type === 'findQuestItem')
+        return { origId: o.id, catKey: 'collect', itemName: o.questItem?.name || '', itemId: o.questItem?.id || null, itemIconLink: '', isQuestItem: true, description: o.description || '', count: o.count || 1, maps, useCategory: false };
       if (o.type === 'findItem' && o.foundInRaid)
-        return { origId: o.id, catKey: 'collect', itemName: o.item?.name || o.itemCategory?.name || '', itemId: o.item?.id || null, itemIconLink: o.item?.iconLink || '', description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory };
+        return { origId: o.id, catKey: 'collect', itemName: o.item?.name || o.itemCategory?.name || '', itemId: realItemId(o.item?.id), itemIconLink: o.item?.iconLink || '', isQuestItem: !!o.questItem, description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory };
       if ((o.type === 'findItem' || o.type === 'giveItem') && !o.foundInRaid)
-        return { origId: o.id, catKey: 'bring', itemName: o.item?.name || o.itemCategory?.name || '', itemId: o.item?.id || null, itemIconLink: o.item?.iconLink || '', description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory };
+        return { origId: o.id, catKey: 'bring', itemName: o.item?.name || o.itemCategory?.name || '', itemId: realItemId(o.item?.id), itemIconLink: o.item?.iconLink || '', isQuestItem: !!o.questItem, description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory };
       if (o.type === 'kill')
         return { origId: o.id, catKey: 'kill', itemName: o.target || '', itemId: null, itemIconLink: '', description: o.description || '', count: o.count || 1, maps, useCategory: false };
       if (o.type === 'mark') {
@@ -553,7 +558,7 @@ function App() {
         return [{ catKey: 'collect', itemName: o.item?.name || o.itemCategory?.name || o.description || '', itemId: o.item?.id || null, itemIconLink: o.item?.iconLink || '', description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory }];
       // クエストアイテム収集（findQuestItem型 + JSON APIでfindItemだがquestItemフィールドがある場合も対応）
       if (o.type === 'findQuestItem' || (o.questItem && !o.item))
-        return [{ catKey: 'collect', itemName: o.questItem?.name || o.description || '', itemId: o.questItem?.id || null, itemIconLink: '', description: '', count: o.count || 1, maps, useCategory: false }];
+        return [{ catKey: 'collect', itemName: o.questItem?.name || o.description || '', itemId: o.questItem?.id || null, itemIconLink: '', isQuestItem: true, description: '', count: o.count || 1, maps, useCategory: false }];
       // 持ち込み・納品
       if (o.type === 'findItem' || o.type === 'giveItem')
         return [{ catKey: 'bring', itemName: o.item?.name || o.itemCategory?.name || o.description || '', itemId: o.item?.id || null, itemIconLink: o.item?.iconLink || '', description: o.description || '', count: o.count || 1, maps, useCategory: !!o.itemCategory }];

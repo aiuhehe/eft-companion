@@ -481,7 +481,9 @@
                   const curr = draft.objectives[idx]?.maps || [];
                   updateObj(idx, { maps: curr.includes(map) ? curr.filter(m => m !== map) : [...curr, map] });
                 };
-                const canSave = draft.name.trim().length > 0;
+                // 持ち込み・収集のアイテムは候補から選んだもの（アイテムID）だけ保存できる（Issue #43）
+                const missingItem = (o) => (o.catKey === 'bring' || o.catKey === 'collect') && !o.useCategory && !o.itemId;
+                const canSave = draft.name.trim().length > 0 && !draft.objectives.some(missingItem);
                 const saveDraft = () => {
                   const ts = Date.now();
                   const taskId = customTaskEditId || 'custom_' + ts;
@@ -497,11 +499,15 @@
                       const base = { id: o.origId || `custom_obj_${ts}_${i}`, maps: (o.maps || []).map(m => ({ name: m })), count: o.count || 1 };
                       if (o.catKey === 'collect') {
                         if (o.useCategory) return { ...base, type: 'findItem', foundInRaid: true, item: null, itemCategory: { name: o.itemName || '' }, description: o.description || '' };
-                        return { ...base, type: 'findItem', foundInRaid: true, item: { id: o.itemId || `custom_item_${ts}_${i}`, name: o.itemName || '', iconLink: o.itemIconLink || '' }, description: o.description || '' };
+                        // クエストアイテムは API のタスクと同じ findQuestItem で保存
+                        if (o.isQuestItem) return { ...base, type: 'findQuestItem', questItem: { id: o.itemId, name: o.itemName || '' }, description: o.description || '' };
+                        return { ...base, type: 'findItem', foundInRaid: true, item: { id: o.itemId, name: o.itemName || '', iconLink: o.itemIconLink || '' }, description: o.description || '' };
                       }
                       if (o.catKey === 'bring') {
                         if (o.useCategory) return { ...base, type: 'giveItem', foundInRaid: false, item: null, itemCategory: { name: o.itemName || '' }, description: o.description || '' };
-                        return { ...base, type: 'findItem', foundInRaid: false, item: { id: o.itemId || `custom_item_${ts}_${i}`, name: o.itemName || '', iconLink: o.itemIconLink || '' }, description: o.description || '' };
+                        // クエストアイテムの持ち込みは findItem のまま questItem も付ける（出撃準備タブの表示は item を使う）
+                        return { ...base, type: 'findItem', foundInRaid: false, item: { id: o.itemId, name: o.itemName || '', iconLink: o.itemIconLink || '' },
+                          ...(o.isQuestItem ? { questItem: { id: o.itemId, name: o.itemName || '' } } : {}), description: o.description || '' };
                       }
                       if (o.catKey === 'kill')    return { ...base, type: 'kill', foundInRaid: false,
                         target: o.itemName || 'Any target', description: o.description || '',
@@ -606,7 +612,7 @@
                       <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', borderRadius: 6, padding: '8px 10px' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                           <select value={o.catKey}
-                            onChange={e => updateObj(idx, { catKey: e.target.value, itemName: '', itemId: null, itemIconLink: '', useCategory: false, description: '' })}
+                            onChange={e => updateObj(idx, { catKey: e.target.value, itemName: '', itemId: null, itemIconLink: '', isQuestItem: false, useCategory: false, description: '' })}
                             style={{ padding: '4px 6px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-primary)', fontSize: 12 }}>
                             {CAT_OPTIONS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                           </select>
@@ -615,11 +621,11 @@
                           <div style={{ display: 'flex', gap: 4, flex: 1, minWidth: 0, alignItems: 'center' }}>
                             {(o.catKey === 'bring' || o.catKey === 'collect') && (
                               <div style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
-                                <button onClick={() => updateObj(idx, { useCategory: false, itemName: '', itemId: null, itemIconLink: '' })}
+                                <button onClick={() => updateObj(idx, { useCategory: false, itemName: '', itemId: null, itemIconLink: '', isQuestItem: false })}
                                   style={{ padding: '3px 7px', fontSize: 10, cursor: 'pointer', border: 'none', background: !o.useCategory ? 'var(--accent)' : 'var(--bg-primary)', color: !o.useCategory ? 'var(--accent-on)' : 'var(--text-secondary)' }}>
                                   アイテム
                                 </button>
-                                <button onClick={() => updateObj(idx, { useCategory: true, itemName: '', itemId: null, itemIconLink: '' })}
+                                <button onClick={() => updateObj(idx, { useCategory: true, itemName: '', itemId: null, itemIconLink: '', isQuestItem: false })}
                                   style={{ padding: '3px 7px', fontSize: 10, cursor: 'pointer', border: 'none', background: o.useCategory ? 'var(--accent)' : 'var(--bg-primary)', color: o.useCategory ? 'var(--accent-on)' : 'var(--text-secondary)' }}>
                                   カテゴリ
                                 </button>
@@ -631,7 +637,7 @@
                                   style={{ position: 'absolute', left: 5, top: '50%', transform: 'translateY(-50%)', width: 20, height: 20, objectFit: 'contain', pointerEvents: 'none' }} />
                               )}
                               <input type="text" value={o.itemName || ''}
-                                onChange={e => { updateObj(idx, { itemName: e.target.value, itemId: null, itemIconLink: '' }); setCustomFormItemSearchIdx(idx); }}
+                                onChange={e => { updateObj(idx, { itemName: e.target.value, itemId: null, itemIconLink: '', isQuestItem: false }); setCustomFormItemSearchIdx(idx); }}
                                 onFocus={() => setCustomFormItemSearchIdx(idx)}
                                 onBlur={() => setTimeout(() => setCustomFormItemSearchIdx(cur => cur === idx ? -1 : cur), 150)}
                                 placeholder={
@@ -641,7 +647,12 @@
                                   o.useCategory ? 'カテゴリ名（例: Household goods）' :
                                   o.catKey === 'place' ? 'マーカーアイテム名' : 'アイテム名'
                                 }
-                                style={{ width: '100%', padding: `4px 8px 4px ${!o.useCategory && o.itemIconLink ? '30px' : '8px'}`, background: 'var(--bg-primary)', border: `1px solid ${o.itemId ? 'var(--state-ok)' : 'var(--border)'}`, borderRadius: 4, color: 'var(--text-primary)', fontSize: 12, boxSizing: 'border-box' }} />
+                                style={{ width: '100%', padding: `4px 8px 4px ${!o.useCategory && o.itemIconLink ? '30px' : '8px'}`, background: 'var(--bg-primary)', border: `1px solid ${o.itemId ? 'var(--state-ok)' : missingItem(o) ? 'var(--danger)' : 'var(--border)'}`, borderRadius: 4, color: 'var(--text-primary)', fontSize: 12, boxSizing: 'border-box' }} />
+                              {missingItem(o) && (
+                                <div style={{ fontSize: 10, color: 'var(--danger-text)', marginTop: 2 }}>
+                                  {o.itemName ? '候補から選び直してください' : '候補から選んでください'}
+                                </div>
+                              )}
                               {customFormItemSearchIdx === idx && (o.itemName || '').length > 0 && o.catKey !== 'extract' && o.catKey !== 'locate' && (() => {
                                 const low = (o.itemName || '').toLowerCase();
                                 let results;
@@ -657,10 +668,9 @@
                                     .slice(0, 8)
                                     .map(c => ({ label: CATEGORY_JA[c] || c, sub: null, icon: null, id: null, iconLink: '', categoryKey: c }));
                                 } else {
-                                  results = apiData.items
-                                    .filter(it => (it.name || '').toLowerCase().includes(low) || (it.shortName || '').toLowerCase().includes(low))
-                                    .slice(0, 8)
-                                    .map(it => ({ label: it.name, sub: it.shortName !== it.name ? it.shortName : null, icon: it.iconLink || null, id: it.id, iconLink: it.iconLink || '' }));
+                                  // アイテム一覧＋クエストアイテム（タスク品）
+                                  results = searchItemPickCandidates(o.itemName)
+                                    .map(it => ({ label: it.name, sub: it.shortName && it.shortName !== it.name ? it.shortName : null, icon: it.iconLink || null, id: it.id, iconLink: it.iconLink || '', quest: it.quest }));
                                 }
                                 if (results.length === 0) return null;
                                 return (
@@ -668,7 +678,7 @@
                                     {results.map((r, ri) => (
                                       <div key={ri}
                                         onMouseDown={() => {
-                                          updateObj(idx, { itemName: r.categoryKey || r.label, itemId: r.id || null, itemIconLink: r.iconLink });
+                                          updateObj(idx, { itemName: r.categoryKey || r.label, itemId: r.id || null, itemIconLink: r.iconLink, isQuestItem: !!r.quest });
                                           setCustomFormItemSearchIdx(-1);
                                         }}
                                         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)' }}
@@ -677,6 +687,7 @@
                                         {r.icon && <img src={r.icon} alt="" style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, background: 'var(--bg-primary)', borderRadius: 2 }} />}
                                         <span>{r.label}</span>
                                         {r.sub && <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>({r.sub})</span>}
+                                        {r.quest && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--warn-text)', border: '1px solid var(--warn)', borderRadius: 3, padding: '0 4px', flexShrink: 0 }}>タスク品</span>}
                                       </div>
                                     ))}
                                   </div>
@@ -889,18 +900,24 @@
                           const newObjs = (m.inlineFormObjectives || []).map((o, j) => j === oi ? { ...o, ...patch } : o);
                           updateM(i, { inlineFormObjectives: newObjs });
                         };
+                        // 持ち込み・収集のアイテムは候補から選んだもの（アイテムID）だけ登録できる（Issue #43）
+                        const inlineMissingItem = (o) => (o.catKey === 'bring' || o.catKey === 'collect') && !o.itemId;
+                        const inlineCanSubmit = !!(m.inlineFormName || '').trim() && !(m.inlineFormObjectives || []).some(inlineMissingItem);
                         const handleInlineFormSubmit = () => {
                           const name = (m.inlineFormName || '').trim();
-                          if (!name) return;
+                          if (!inlineCanSubmit) return;
                           const ts = Date.now();
                           const objectives = (m.inlineFormObjectives || []).map((o, oi) => {
                             const base = { id: `custom_obj_${ts}_${oi}`, maps: (o.maps || []).map(mn => ({ name: mn })), count: o.count || 1 };
-                            if (o.catKey === 'collect') return { ...base, type: 'findItem', foundInRaid: true, item: { id: `custom_item_${ts}_${oi}`, name: o.itemName || '', iconLink: '' }, description: '' };
+                            const itemRef = { id: o.itemId, name: o.itemName || '', iconLink: o.itemIconLink || '' };
+                            const questRef = o.isQuestItem ? { questItem: { id: o.itemId, name: o.itemName || '' } } : {};
+                            if (o.catKey === 'collect' && o.isQuestItem) return { ...base, type: 'findQuestItem', ...questRef, description: '' };
+                            if (o.catKey === 'collect') return { ...base, type: 'findItem', foundInRaid: true, item: itemRef, description: '' };
+                            if (o.catKey === 'bring') return { ...base, type: 'findItem', foundInRaid: false, item: itemRef, ...questRef, description: '' };
                             if (o.catKey === 'kill') return { ...base, type: 'kill', target: o.itemName || '', description: '' };
                             if (o.catKey === 'place') return { ...base, type: 'mark', markerItem: { name: o.itemName || '' }, description: '' };
                             if (o.catKey === 'extract') return { ...base, type: 'extract', description: o.itemName || '' };
-                            if (o.catKey === 'locate') return { ...base, type: 'locate', description: o.itemName || '' };
-                            return { ...base, type: 'findItem', foundInRaid: false, item: { id: `custom_item_${ts}_${oi}`, name: o.itemName || '', iconLink: '' }, description: '' };
+                            return { ...base, type: 'locate', description: o.itemName || '' };
                           });
                           const newTask = { id: 'custom_' + ts, name, trader: (m.inlineFormTrader || '').trim() ? { name: m.inlineFormTrader.trim() } : null, wikiLink: '', objectives };
                           saveCustomTasks([...customTasks, newTask]);
@@ -1048,14 +1065,57 @@
                                           {(m.inlineFormObjectives || []).map((o, oi) => (
                                             <div key={oi} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', borderRadius: 5, padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                                               <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                                                <select value={o.catKey} onChange={e => updateObj(oi, { catKey: e.target.value, itemName: '', count: 1 })}
+                                                <select value={o.catKey} onChange={e => updateObj(oi, { catKey: e.target.value, itemName: '', itemId: null, itemIconLink: '', isQuestItem: false, count: 1 })}
                                                   style={{ ...inSty, padding: '3px 6px', width: 90 }}>
                                                   {catOpts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                                 </select>
+                                                {(o.catKey === 'bring' || o.catKey === 'collect') ? (() => {
+                                                  // アイテム欄: 候補（アイテム一覧＋タスク品）から選ばせる。文字を書き換えると選択は外れる
+                                                  const pickKey = `${i}-${oi}`;
+                                                  const missing = inlineMissingItem(o);
+                                                  const results = ocrItemPickKey === pickKey ? searchItemPickCandidates(o.itemName) : [];
+                                                  return (
+                                                    <div style={{ position: 'relative', flex: 1, minWidth: 120 }}>
+                                                      {o.itemIconLink && (
+                                                        <img src={o.itemIconLink} alt=""
+                                                          style={{ position: 'absolute', left: 4, top: 11, transform: 'translateY(-50%)', width: 18, height: 18, objectFit: 'contain', pointerEvents: 'none' }} />
+                                                      )}
+                                                      <input type="text" value={o.itemName || ''}
+                                                        onChange={e => { updateObj(oi, { itemName: e.target.value, itemId: null, itemIconLink: '', isQuestItem: false }); setOcrItemPickKey(pickKey); }}
+                                                        onFocus={() => setOcrItemPickKey(pickKey)}
+                                                        onBlur={() => setTimeout(() => setOcrItemPickKey(cur => cur === pickKey ? '' : cur), 150)}
+                                                        placeholder="アイテム名で検索"
+                                                        style={{ width: '100%', boxSizing: 'border-box', ...inSty, padding: `3px 6px 3px ${o.itemIconLink ? '26px' : '6px'}`,
+                                                          border: `1px solid ${o.itemId ? 'var(--state-ok)' : missing ? 'var(--danger)' : 'var(--border)'}` }} />
+                                                      {missing && (
+                                                        <div style={{ fontSize: 10, color: 'var(--danger-text)', marginTop: 2 }}>
+                                                          {o.itemName ? '候補から選び直してください' : '候補から選んでください'}
+                                                        </div>
+                                                      )}
+                                                      {results.length > 0 && (
+                                                        <div style={{ position: 'absolute', top: 24, left: 0, right: 0, zIndex: 200, background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 4, maxHeight: 160, overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                                                          {results.map(r => (
+                                                            <div key={r.id}
+                                                              onMouseDown={() => { updateObj(oi, { itemName: r.name, itemId: r.id, itemIconLink: r.iconLink || '', isQuestItem: r.quest }); setOcrItemPickKey(''); }}
+                                                              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)' }}
+                                                              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-muted)'}
+                                                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                                              {r.iconLink && <img src={r.iconLink} alt="" style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0, background: 'var(--bg-primary)', borderRadius: 2 }} />}
+                                                              <span>{r.name}</span>
+                                                              {r.shortName && r.shortName !== r.name && <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>({r.shortName})</span>}
+                                                              {r.quest && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--warn-text)', border: '1px solid var(--warn)', borderRadius: 3, padding: '0 4px', flexShrink: 0 }}>タスク品</span>}
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  );
+                                                })() : (
                                                 <input type="text" value={o.itemName || ''}
                                                   onChange={e => updateObj(oi, { itemName: e.target.value })}
-                                                  placeholder={o.catKey === 'kill' ? 'ターゲット' : o.catKey === 'extract' ? '脱出ポイント' : o.catKey === 'locate' ? '場所・ポイント名' : 'アイテム名'}
+                                                  placeholder={o.catKey === 'kill' ? 'ターゲット' : o.catKey === 'extract' ? '脱出ポイント' : o.catKey === 'locate' ? '場所・ポイント名' : 'マーカー・設置アイテム名'}
                                                   style={{ flex: 1, minWidth: 80, ...inSty, padding: '3px 6px' }} />
+                                                )}
                                                 {['collect','bring','kill'].includes(o.catKey) && (
                                                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                                                     <button style={countBtnSty} onClick={() => updateObj(oi, { count: Math.max(1, (o.count || 1) - 1) })}>−</button>
@@ -1092,7 +1152,7 @@
                                           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                             <button className="btn btn-gray btn-sm" onClick={() => updateM(i, { mode: 'search' })}>キャンセル</button>
                                             <button className="btn btn-yellow btn-sm"
-                                              disabled={!(m.inlineFormName || '').trim()}
+                                              disabled={!inlineCanSubmit}
                                               style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                                               onClick={handleInlineFormSubmit}>
                                               <Icon name="circle-check" size={11} color="var(--accent-on)" /> 登録して追加
