@@ -7,7 +7,8 @@
 | `src/js/*.js` | **ソースコード（編集対象）** — 番号順に結合される JSX/JS |
 | `src/head.html` | HTML骨格の先頭（`<script type="text/babel">` 開始タグまで） |
 | `src/tail.html` | HTML骨格の末尾（`</script></body></html>`） |
-| `build.sh` | ビルドスクリプト（Mac / WSL / Git Bash）。`--dist` で公開用 `dist/`（`index.html` 化・マップ画像なし）も作成。環境変数 `DISCORD_BOT_URL` があれば `__DISCORD_BOT_URL__` を置き換える（`pages.yml` はシークレットから渡す） |
+| `build.sh` | ビルドスクリプト（Mac / WSL / Git Bash）。`--dist` で公開用 `dist/`（`index.html` 化・マップ画像なし）も作成。環境変数 `DISCORD_BOT_URL`（無ければ `.env` の同名の行）があれば `__DISCORD_BOT_URL__` を置き換える（`pages.yml` はシークレットから渡す） |
+| `.env` / `.env.example` | ローカルビルド用の設定（`DISCORD_BOT_URL=…`）。`.env` は gitignore 済み・`.env.example` をコピーして作る |
 | `build.ps1` | ビルドスクリプト（Windows PowerShell）。`DISCORD_BOT_URL` の扱いは `build.sh` と同じ。**ASCII のみで書く**（PowerShell 5.1 は BOM なし UTF-8 を ANSI で読むため日本語が壊れる） |
 | `eft-tool.html` | **ビルド出力（直接編集しない）** — `build.sh` or `build.ps1` で生成 |
 | `style.css` | スタイルシート（`<link>` で読み込み） |
@@ -17,7 +18,7 @@
 | `.github/workflows/ci.yml` | `main` 向け PR ごとに `./build.sh --dist` を実行してビルドが通るか確認（公開はしない） |
 | `.github/workflows/pages.yml` | `main` への push で `./build.sh --dist` → `dist/` を GitHub Pages（https://aiuhehe.github.io/eft-companion/）に公開 |
 | `.github/workflows/discord-notify.yml` + `.github/scripts/discord_notify.py` | PR の動き（作成・レビュー・コメント・CI失敗・Pages公開・マージ）を Discord フォーラムへ通知（1 PR = 1 投稿）＋毎朝のまとめ。仕様は `docs/Discord通知仕様書.md` |
-| `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`maps/`・開発用作業ファイルを除外 |
+| `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`.env`・`maps/`・開発用作業ファイルを除外 |
 
 ### ソースファイル一覧（`src/js/`）
 

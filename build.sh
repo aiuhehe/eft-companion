@@ -7,7 +7,12 @@ set -e
 cd "$(dirname "$0")"
 
 # Bot の URL（GitHub Actions シークレット DISCORD_BOT_URL・ソースには書かない）を __DISCORD_BOT_URL__ と置き換える
+# 環境変数が無ければ .env（gitignore 済み・.env.example 参照）の DISCORD_BOT_URL=… を使う
 BOT_URL="${DISCORD_BOT_URL:-}"
+if [ -z "$BOT_URL" ] && [ -f .env ]; then
+  BOT_URL=$(tr -d '\r' < .env | grep -E '^[[:space:]]*DISCORD_BOT_URL[[:space:]]*=' | tail -n 1 \
+    | sed -E "s/^[^=]*=[[:space:]]*//; s/[[:space:]]*\$//; s/^[\"']//; s/[\"']\$//")
+fi
 BOT_URL="${BOT_URL%/}"
 if [ -n "$BOT_URL" ]; then
   case "$BOT_URL" in

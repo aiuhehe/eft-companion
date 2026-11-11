@@ -3,7 +3,13 @@ Set-Location $PSScriptRoot
 # If empty, the settings tab shows an input for the Bot URL instead.
 #   e.g. $env:DISCORD_BOT_URL = 'https://...'; ./build.ps1
 # (Keep this file ASCII-only: Windows PowerShell 5.1 reads BOM-less files as ANSI.)
-$botUrl = "$env:DISCORD_BOT_URL".Trim().TrimEnd('/')
+# Falls back to DISCORD_BOT_URL=... in .env (gitignored; see .env.example) when the env var is empty.
+$botUrl = "$env:DISCORD_BOT_URL".Trim()
+if (-not $botUrl -and (Test-Path .env)) {
+    $line = Get-Content .env -Encoding UTF8 | Where-Object { $_ -match '^\s*DISCORD_BOT_URL\s*=' } | Select-Object -Last 1
+    if ($line) { $botUrl = ($line -replace '^\s*DISCORD_BOT_URL\s*=\s*', '').Trim().Trim('"', "'") }
+}
+$botUrl = $botUrl.TrimEnd('/')
 if ($botUrl) {
     if ($botUrl -notmatch '^(https://|http://localhost|http://127\.0\.0\.1)') { throw 'DISCORD_BOT_URL must start with https://' }
     if ($botUrl -match '[\s''"\\|&]') { throw 'DISCORD_BOT_URL contains an invalid character' }
