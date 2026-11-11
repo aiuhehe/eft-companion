@@ -99,6 +99,12 @@
             </div>
           </div>
 
+          {/* Discord 出撃共有の連携（09-discord-link.js） */}
+          <DiscordLinkSection getShareData={() => buildRaidShareData({
+            tasks: apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked,
+            activeMode, gameMode, uiLang, playerLevel,
+          })} />
+
           {/* Trader Status */}
           <div className="section">
             <div className="section-title"><Icon name="chart-bar" size={14} color="var(--accent)" /> トレーダー現在値</div>

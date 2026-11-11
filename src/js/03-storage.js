@@ -83,13 +83,17 @@ function saveState(s) {
 const BACKUP_KEY_PREFIX = 'eft_';
 const BACKUP_TYPE = 'eft-tool-full-backup';
 const BACKUP_VERSION = 1;
+/** Discord 連携情報（連携トークンを含む・グローバル）。docs/Discord出撃共有Bot設計書.md §11.1 */
+const DISCORD_LINK_KEY = 'eft_discord_link_v1';
+/** バックアップに含めない（復元でも消さない・上書きしない）キー。連携トークンをファイルに残さないため */
+const BACKUP_EXCLUDE_KEYS = new Set([DISCORD_LINK_KEY]);
 
-/** バックアップ対象の localStorage キー一覧（eft_ で始まるもの全て） */
+/** バックアップ対象の localStorage キー一覧（eft_ で始まるもの全て。BACKUP_EXCLUDE_KEYS を除く） */
 function getBackupKeys() {
   const keys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith(BACKUP_KEY_PREFIX)) keys.push(k);
+    if (k && k.startsWith(BACKUP_KEY_PREFIX) && !BACKUP_EXCLUDE_KEYS.has(k)) keys.push(k);
   }
   return keys.sort();
 }
@@ -124,7 +128,7 @@ function restoreAllData(backup) {
   if (!backup || backup.type !== BACKUP_TYPE || typeof backup.data !== 'object' || !backup.data) {
     throw new Error('バックアップファイルの形式ではありません');
   }
-  const entries = Object.entries(backup.data).filter(([k, v]) => k.startsWith(BACKUP_KEY_PREFIX) && typeof v === 'string');
+  const entries = Object.entries(backup.data).filter(([k, v]) => k.startsWith(BACKUP_KEY_PREFIX) && !BACKUP_EXCLUDE_KEYS.has(k) && typeof v === 'string');
   // 書き込み失敗（容量超過等）に備えて現データを退避し、失敗時は元に戻す
   const prev = getBackupKeys().map(k => [k, localStorage.getItem(k)]);
   try {
