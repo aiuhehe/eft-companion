@@ -7,7 +7,7 @@
 const _DISCORD_BOT_URL_EMBED = '__DISCORD_BOT_URL__';
 const DISCORD_BOT_URL = /^https?:\/\/[^\s'"]+$/.test(_DISCORD_BOT_URL_EMBED) ? _DISCORD_BOT_URL_EMBED.replace(/\/+$/, '') : '';
 
-/** 連携情報 { token, userName, linkedAt, syncEnabled, lastSyncAt, botUrl? }。botUrl は URL を埋め込まずにビルドしたときだけ */
+/** 連携情報 { token, userName, linkedAt, lastSyncAt, botUrl? }。連携中＝同期する（オン/オフの設定は持たない）。botUrl は URL を埋め込まずにビルドしたときだけ */
 function loadDiscordLink() {
   try {
     const v = JSON.parse(localStorage.getItem(DISCORD_LINK_KEY) || 'null');
@@ -79,7 +79,7 @@ async function discordUnlink(botUrl, token) {
 }
 
 /**
- * PUT /api/share（共有データ v1 をそのまま送る）。§11.2 の応答の扱い。
+ * PUT /api/share（共有データ v1 をそのまま送る）。§11.2 の応答の扱い。自動同期（#33）で使う。
  * 戻り値 { status: 'ok' | 'unauthorized' | 'outdated' | 'rate' | 'network' | 'error', retryAfter?, httpStatus? }
  */
 async function discordPutShare(botUrl, token, data) {
@@ -150,8 +150,8 @@ function DiscordLinkSection({ getShareData }) {
   const [link, setLink] = useState(loadDiscordLink);
   const [code, setCode] = useState('');
   const [botUrlDraft, setBotUrlDraft] = useState(() => loadDiscordLink().botUrl || '');
-  const [busy, setBusy] = useState('');     // '' | 'link' | 'unlink' | 'send'
-  const [msg, setMsg] = useState(null);     // { kind: 'ok' | 'error', text }
+  const [busy, setBusy] = useState('');       // '' | 'link' | 'unlink'
+  const [error, setError] = useState('');     // エラーだけ出す（成功・解除のお知らせは出さない）
 
   // 別タブで連携・解除したときに追従する
   useEffect(() => {
@@ -174,48 +174,23 @@ function DiscordLinkSection({ getShareData }) {
 
   const handleLink = async () => {
     const c = normalizeDiscordLinkCode(code);
-    if (!/^\d{6}$/.test(c)) { setMsg({ kind: 'error', text: '連携コードは6桁の数字です' }); return; }
-    if (!botUrl) { setMsg({ kind: 'error', text: 'Bot の URL を入力してください' }); return; }
-    setBusy('link'); setMsg(null);
+    if (!/^\d{6}$/.test(c)) { setError('連携コードは6桁の数字です'); return; }
+    if (!botUrl) { setError('Bot の URL を入力してください'); return; }
+    setBusy('link'); setError('');
     const r = await discordLinkWithCode(botUrl, c);
     setBusy('');
-    if (!r.ok) { setMsg({ kind: 'error', text: r.message }); return; }
-    update({ token: r.token, userName: r.userName, linkedAt: new Date().toISOString(), syncEnabled: false, lastSyncAt: undefined });
+    if (!r.ok) { setError(r.message); return; }
+    update({ token: r.token, userName: r.userName, linkedAt: new Date().toISOString(), lastSyncAt: undefined });
     setCode('');
-    setMsg({ kind: 'ok', text: `${r.userName || 'Discord'} と連携しました` });
   };
 
   const handleUnlink = async () => {
     if (!confirm('Discord 連携を解除しますか？\n（もう一度使うには Discord で /raid link からやり直します）')) return;
-    setBusy('unlink'); setMsg(null);
+    setBusy('unlink'); setError('');
     const reached = botUrl ? await discordUnlink(botUrl, link.token) : false;
     setBusy('');
-    update({ token: undefined, userName: undefined, linkedAt: undefined, syncEnabled: false, lastSyncAt: undefined });
-    setMsg(reached
-      ? { kind: 'ok', text: '連携を解除しました' }
-      : { kind: 'error', text: 'このブラウザの連携は解除しましたが、Bot に届きませんでした。確実に無効にするには Discord で /raid unlink を実行してください' });
-  };
-
-  const handleSendNow = async () => {
-    if (!botUrl) { setMsg({ kind: 'error', text: 'Bot の URL を入力してください' }); return; }
-    setBusy('send'); setMsg(null);
-    const r = await discordPutShare(botUrl, link.token, getShareData());
-    setBusy('');
-    if (r.status === 'ok') {
-      update({ lastSyncAt: new Date().toISOString() });
-      setMsg({ kind: 'ok', text: '送信しました' });
-    } else if (r.status === 'unauthorized') {
-      update({ token: undefined, userName: undefined, linkedAt: undefined, syncEnabled: false, lastSyncAt: undefined });
-      setMsg({ kind: 'error', text: '連携が解除されています。Discord で /raid link からもう一度連携してください' });
-    } else if (r.status === 'outdated') {
-      setMsg({ kind: 'error', text: `送る内容を Bot が受け付けませんでした（HTTP ${r.httpStatus}）。アプリ（または Bot）を更新してください` });
-    } else if (r.status === 'rate') {
-      setMsg({ kind: 'error', text: `送信が多すぎます。${r.retryAfter ? `${_fmtDiscordWait(r.retryAfter)}待ってから` : 'しばらく待ってから'}もう一度お試しください` });
-    } else if (r.status === 'network') {
-      setMsg({ kind: 'error', text: '同期できませんでした（Bot に接続できません）' });
-    } else {
-      setMsg({ kind: 'error', text: `同期できませんでした（HTTP ${r.httpStatus}）` });
-    }
+    update({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined });
+    if (!reached) setError('このブラウザの連携は解除しましたが、Bot に届きませんでした。確実に無効にするには Discord で /raid unlink を実行してください');
   };
 
   const rowStyle = { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' };
@@ -225,10 +200,10 @@ function DiscordLinkSection({ getShareData }) {
     <div className="section discord-link">
       <div className="section-title" style={{ flexWrap: 'wrap' }}>
         <Icon name="link" size={14} color="var(--accent)" /> Discord 連携
-        {msg && (
-          <span className="discord-link-msg" style={{ color: msg.kind === 'error' ? 'var(--danger-text)' : 'var(--state-ok-text)' }}>
-            <Icon name={msg.kind === 'error' ? 'alert-triangle' : 'circle-check'} size={12} color="currentColor" />
-            {msg.text}
+        {error && (
+          <span className="discord-link-msg" style={{ color: 'var(--danger-text)' }}>
+            <Icon name="alert-triangle" size={12} color="currentColor" />
+            {error}
           </span>
         )}
       </div>
@@ -241,7 +216,7 @@ function DiscordLinkSection({ getShareData }) {
             onChange={e => setBotUrlDraft(e.target.value)}
             onBlur={() => {
               const u = _normBotUrl(botUrlDraft);
-              if (u && !isValidDiscordBotUrl(u)) { setMsg({ kind: 'error', text: 'Bot の URL は https:// で始まる URL を入力してください' }); return; }
+              if (u && !isValidDiscordBotUrl(u)) { setError('Bot の URL は https:// で始まる URL を入力してください'); return; }
               update({ botUrl: u || undefined });
             }} />
           <span style={hint}>この版には Bot の URL が入っていないため入力してください（GitHub Pages 版では不要）</span>
@@ -267,45 +242,32 @@ function DiscordLinkSection({ getShareData }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={rowStyle}>
-            <Icon name="circle-check" size={14} color="var(--state-ok)" />
-            <span style={{ fontSize: 13 }}>連携中: <b>{link.userName || '（名前不明）'}</b></span>
-            <button className="btn btn-gray btn-sm" disabled={!!busy} onClick={handleUnlink}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Icon name="x" size={11} color="currentColor" /> {busy === 'unlink' ? '解除中…' : '連携解除'}
-            </button>
-          </div>
-          <div style={rowStyle}>
-            <label className="radio-label" style={{ cursor: 'pointer' }}>
-              <input type="checkbox" checked={!!link.syncEnabled} style={{ cursor: 'pointer' }}
-                onChange={e => update({ syncEnabled: e.target.checked })} />
-              Discord に同期
-            </label>
-            <span style={hint}>（自動送信は開発中。今は「今すぐ送信」で送ります）</span>
-          </div>
-          <div style={rowStyle}>
-            <button className="btn btn-yellow btn-sm" disabled={!!busy} onClick={handleSendNow}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Icon name={busy === 'send' ? 'refresh' : 'upload'} size={11} color="currentColor" />
-              {busy === 'send' ? '送信中…' : '今すぐ送信'}
-            </button>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Icon name="clock" size={11} color="var(--text-secondary)" />
-              {link.lastSyncAt ? `${formatDiscordSyncTime(link.lastSyncAt)} に同期` : 'まだ送信していません'}
-            </span>
-          </div>
+        <div style={rowStyle}>
+          <Icon name="circle-check" size={14} color="var(--state-ok)" />
+          <span style={{ fontSize: 13 }}>連携中: <b>{link.userName || '（名前不明）'}</b></span>
+          <button className="btn btn-gray btn-sm" disabled={!!busy} onClick={handleUnlink}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="x" size={11} color="currentColor" /> {busy === 'unlink' ? '解除中…' : '連携解除'}
+          </button>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 6 }}>
+            <Icon name="clock" size={11} color="var(--text-secondary)" />
+            {link.lastSyncAt ? `${formatDiscordSyncTime(link.lastSyncAt)} に同期` : 'まだ同期していません'}
+          </span>
         </div>
       )}
 
-      <div style={{ ...rowStyle, marginTop: 10 }}>
-        <button className="btn btn-gray btn-sm"
-          title="Discord 出撃共有で送る内容（進行タスクの目標・全マップ分）を JSON で保存して確認する"
-          onClick={() => downloadRaidShareData(getShareData())}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <Icon name="upload" size={11} color="currentColor" /> 送る内容を確認
-        </button>
-        <span style={hint}>送るのは進行タスク（ボード登録済み・未完了）の目標だけ</span>
+      {/* 開発中だけ出す枠。自動同期（#33）・同期状態（#34）ができたら枠ごと消す */}
+      <div className="dev-only-box">
+        <div className="dev-only-box-label">開発中（今だけ表示）</div>
+        <div style={rowStyle}>
+          <button className="btn btn-gray btn-sm"
+            title="Discord 出撃共有で送る内容（進行タスクの目標・全マップ分）を JSON で保存して確認する"
+            onClick={() => downloadRaidShareData(getShareData())}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="upload" size={11} color="currentColor" /> 送る内容を確認
+          </button>
+          <span style={hint}>送るのは進行タスク（ボード登録済み・未完了）の目標だけ</span>
+        </div>
       </div>
     </div>
   );
