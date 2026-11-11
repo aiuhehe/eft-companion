@@ -38,17 +38,31 @@ function _slugToTitle(slug) {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// 翻訳してはいけない欄（Issue #45）。
+// タスク目標は id と description に同じ翻訳キー（24桁hex）が入っているため、id まで訳すと
+// 目標 ID が訳文（言語・GraphQL 復旧の前後で変わる値）になってしまう。factionName は 'Any' / 'USEC' 等のコード値。
+const _LOCALE_SKIP_KEYS = new Set(['id', 'factionName']);
+// 欄ごとの専用訳。撃破対象の 'Any' は翻訳表ではマップ用の「任意のマップ / Any location」なので上書きする
+const _LOCALE_FIELD_OVERRIDES = {
+  targetNames: { Any: { ja: '任意の目標', en: 'Any target' } },
+};
+
 // ロケール翻訳を適用: 文字列値がロケールキーとして存在すれば置換
 // ({hexId} Name, hideout_area_7_name, MOD_PISTOL_GRIP 等、全形式に対応)
-function _applyLocale(obj, locale) {
-  if (Array.isArray(obj)) return obj.map(x => _applyLocale(x, locale));
+// field は値が入っている欄名（配列の要素は配列の欄名を引き継ぐ）
+function _applyLocale(obj, locale, lang, field) {
+  if (Array.isArray(obj)) return obj.map(x => _applyLocale(x, locale, lang, field));
   if (obj && typeof obj === 'object') {
     const r = {};
-    for (const [k, v] of Object.entries(obj)) r[k] = _applyLocale(v, locale);
+    for (const [k, v] of Object.entries(obj))
+      r[k] = _LOCALE_SKIP_KEYS.has(k) ? v : _applyLocale(v, locale, lang, k);
     return r;
   }
-  if (typeof obj === 'string' && Object.prototype.hasOwnProperty.call(locale, obj))
-    return locale[obj];
+  if (typeof obj === 'string') {
+    const ov = _LOCALE_FIELD_OVERRIDES[field]?.[obj];
+    if (ov) return ov[lang] || ov.en;
+    if (Object.prototype.hasOwnProperty.call(locale, obj)) return locale[obj];
+  }
   return obj;
 }
 
@@ -64,13 +78,38 @@ function _fetchTranslated(jMode, path, lang) {
       _fetchJson(base),
       _fetchJson(key).then(r => r.data ?? {}).catch(() => ({})),
     ])
-      .then(([main, loc]) => _applyLocale(main.data, loc))
+      .then(([main, loc]) => _applyLocale(main.data, loc, lang))
       .catch(err => {
         delete _translatedCache[key];
         throw err;
       });
   }
   return _translatedCache[key];
+}
+
+// 移行用（Issue #45）: タスクごとの「目標の訳文 → 目標ID（目標の並び順）」の索引。
+// 修正前のフォールバックは目標 id を訳文に書き換えていたので、保存済みのチェック・ピンをこれで本来の ID に戻す。
+// 日本語・英語の両方の訳文を登録する（どちらの言語設定で保存したかは分からないため）。
+// 戻り値: { [taskId]: { [訳文]: [objectiveId, ...] } }
+async function fetchObjectiveTextIndex(jMode) {
+  const base = `${JSON_API_BASE}/${jMode}/tasks`;
+  const [main, ...locs] = await Promise.all([
+    _fetchJson(base),
+    ...['ja', 'en'].map(l => _fetchJson(`${base}_${l}`).then(r => r.data ?? {}).catch(() => ({}))),
+  ]);
+  const index = {};
+  Object.values(main?.data?.tasks ?? {}).forEach(task => {
+    const byText = {};
+    (task.objectives || []).forEach(obj => {
+      if (!obj?.id) return;
+      new Set(locs.map(loc => loc[obj.id])).forEach(text => {
+        if (typeof text !== 'string' || !text || text === obj.id) return;
+        (byText[text] = byText[text] || []).push(obj.id);
+      });
+    });
+    index[task.id] = byText;
+  });
+  return index;
 }
 
 // items をIDキーのマップとして取得（翻訳済み）

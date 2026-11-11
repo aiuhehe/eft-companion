@@ -133,6 +133,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 - `ammo` と、クエリ名が `items` の `ammoPacks` / `armorPlates` / `weapons` / `weaponMods` は `_detectItemQueryKind()` で振り分け、`_loadItemDetailContext(jMode, lang)` の共通データ（翻訳済み items・traders・tasks・hideout と生の barters・crafts）から `_itemDetailTransforms[種別]` / `_transformAmmo` で変換する。**`ammo` / `ammoBox` / `weapons` は実装済み**（2026-11-02・弾薬タブはフォールバック中も通常表示）。**`armorPlate` も実装済み**（2026-11-10・プレートタブもフォールバック中に通常表示）。**`weaponMods` も実装済み**（2026-11-11・プリセットタブもフォールバック中に通常表示。`properties` は `ItemPropertiesWeaponMod` のみ値を持ち他は `{}`）。
 - フリマ価格履歴（`historicalItemPrices`）は `json.tarkov.dev/{mode}/prices/{itemId}`（全期間の履歴）を取得し、クエリの `days` で切り出して GraphQL と同じ形で返す（2026-11-02・キャッシュなし・404 は空配列）。
 - 共通ヘルパー: `_makeBuyFor(item, tradersById, tasksById)`（`buyFromTrader` → GraphQL 形式の `buyFor`。`noFlea` でなければ `lastLowPrice`（無ければ `avg24hPrice`）で `flea-market` を追加）、`_buildAcquisitionIndex(barters, crafts, names)`（報酬アイテムID → `bartersFor` / `craftsFor`）。
+- `_applyLocale` は `id`・`factionName` 欄を翻訳しない（目標は `id` と `description` に同じ翻訳キーが入っているため・2026-11-11・Issue #45）。撃破対象 `targetNames` の `Any` は専用訳「任意の目標」（翻訳表の訳はマップ用）。以前に訳文キーで保存されたチェック・ピンは起動時に `migrateTranslatedObjectiveIds` で本来の ID へ移行
 - `_fetchTranslated` は翻訳適用済みの結果もキャッシュする（items 約17MB の翻訳を何度も走らせない）。ダウンロードは `_fetchJson`、共通データは `_itemDetailCtxCache` でそれぞれ1回。
 
 **モードと API の gameMode の対応（2026-11-02 更新）:**

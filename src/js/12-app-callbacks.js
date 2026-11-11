@@ -479,6 +479,17 @@
       historyReqRef.current = new Set();
       setIsFallback(isFallbackActive());
       setLastLoaded(new Date().toLocaleString('ja-JP'));
+      // 修正前のフォールバックで訳文をキーに保存されたチェック・ピンを本来の目標IDへ移す（Issue #45・該当データがあるときだけ）
+      if (needsObjectiveIdMigration()) {
+        fetchObjectiveTextIndex(gm)
+          .then(index => {
+            const r = migrateTranslatedObjectiveIds(index);
+            if (r.pins) setTaskPins(JSON.parse(localStorage.getItem('eft_task_pins_v1') || '[]'));
+            if (r.checks) setRaidObjChecked(JSON.parse(localStorage.getItem(modeKey('eft_raid_obj_checked_v1')) || '{}'));
+            if (r.pins || r.checks) console.info(`[EFT] 目標IDを移行しました（ピン ${r.pins} 件・チェック ${r.checks} 件）`);
+          })
+          .catch(e => console.warn('[EFT] 目標IDの移行用データを取得できませんでした:', e));
+      }
     } catch (e) {
       // fetch のネットワーク失敗（サーバー無応答・接続切断・CORS等）は TypeError、
       // レスポンスがJSONでない（503のHTML等）は SyntaxError になる。

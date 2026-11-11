@@ -226,6 +226,78 @@ async function migrateMapOverrideNames() {
   }
 }
 
+// ── 訳文になっていた目標IDの移行（Issue #45・起動時に API 読み込み後に呼ぶ・冪等） ──
+// 修正前の JSON API フォールバックは目標 id を訳文に書き換えていたため、出撃準備タブのチェック
+// （eft_raid_obj_checked_v1__*・全モード）とマップピン（eft_task_pins_v1 の objectiveId）が訳文をキーに保存されている。
+// API タスク（ID が24桁hex）なのに目標キーが24桁hexでないものを、fetchObjectiveTextIndex の索引で本来の ID に置き換える。
+// 同じタスク内で訳文が重複する目標（例:「アイテム を渡す」が3つ）は、修正前はチェックも共有されていたので
+//   チェック → 該当する目標すべてをチェック済みにする（見た目を修正前と同じに保つ）
+//   ピン     → 並び順で最初の目標に付ける（ピンは複製しない）
+// 索引に無い訳文（API から消えた目標など）はそのまま残す。
+const _HEX24_RE = /^[0-9a-f]{24}$/;
+const _isTranslatedObjKey = (taskId, key) => _HEX24_RE.test(taskId || '') && !!key && !_HEX24_RE.test(key);
+
+function _raidObjCheckedStorageKeys() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('eft_raid_obj_checked_v1__')) keys.push(k);
+  }
+  return keys;
+}
+
+/** 移行が必要な保存データ（訳文キーのチェック・ピン）があるか。無ければ索引の取得自体を省く */
+function needsObjectiveIdMigration() {
+  try {
+    const pins = JSON.parse(localStorage.getItem('eft_task_pins_v1') || 'null');
+    if (Array.isArray(pins) && pins.some(p => _isTranslatedObjKey(p?.taskId, p?.objectiveId))) return true;
+    return _raidObjCheckedStorageKeys().some(lsKey => {
+      const checked = JSON.parse(localStorage.getItem(lsKey) || 'null');
+      return checked && typeof checked === 'object' &&
+        Object.entries(checked).some(([taskId, tc]) => tc && Object.keys(tc).some(k => _isTranslatedObjKey(taskId, k)));
+    });
+  } catch { return false; }
+}
+
+/** index = fetchObjectiveTextIndex() の戻り値。戻り値: { pins: 移行したピン数, checks: 移行したチェック数 } */
+function migrateTranslatedObjectiveIds(index) {
+  const result = { pins: 0, checks: 0 };
+  if (!index) return result;
+  try {
+    const pins = JSON.parse(localStorage.getItem('eft_task_pins_v1') || 'null');
+    if (Array.isArray(pins)) {
+      const next = pins.map(p => {
+        if (!_isTranslatedObjKey(p?.taskId, p?.objectiveId)) return p;
+        const ids = index[p.taskId]?.[p.objectiveId];
+        if (!ids?.length) return p;
+        result.pins++;
+        return { ...p, objectiveId: ids[0] };
+      });
+      if (result.pins) localStorage.setItem('eft_task_pins_v1', JSON.stringify(next));
+    }
+    for (const lsKey of _raidObjCheckedStorageKeys()) {
+      const checked = JSON.parse(localStorage.getItem(lsKey) || 'null');
+      if (!checked || typeof checked !== 'object') continue;
+      let changed = false;
+      const next = {};
+      for (const [taskId, tc] of Object.entries(checked)) {
+        if (!tc || typeof tc !== 'object') { next[taskId] = tc; continue; }
+        const ntc = {};
+        for (const [k, v] of Object.entries(tc)) {
+          const ids = _isTranslatedObjKey(taskId, k) ? index[taskId]?.[k] : null;
+          if (!ids?.length) { ntc[k] = ntc[k] || v; continue; }
+          ids.forEach(id => { ntc[id] = ntc[id] || v; });
+          changed = true;
+          result.checks++;
+        }
+        next[taskId] = ntc;
+      }
+      if (changed) localStorage.setItem(lsKey, JSON.stringify(next));
+    }
+  } catch (e) { console.warn('[EFT] 目標IDの移行に失敗:', e); }
+  return result;
+}
+
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
