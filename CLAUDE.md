@@ -146,6 +146,10 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 - ハイドアウト（`QUERIES.hideout`）はシーズン時のみ `gameMode: pvp-season` を付けて取得先を切り替える。
 - `pvp-season` にはアリーナ系タスクが含まれない。フリマ価格履歴（`historicalItemPrices`）もシーズン中は `pvp-season` の履歴を取得する（2026-11-02〜）。
 
+**タスクの受注条件・プライオリティ（2026-11-11 確認）:**
+- `traderRequirements`（トレーダー LL / 信頼度）は GraphQL・JSON 共通。`otherRequirements`（`globalVariable` = 解放グループの段階、`dialogue` = 会話で出現）は **JSON API のみ**（GraphQL スキーマに無い）。GraphQL 復旧後は `unlockGroups` が空になる点に注意。
+- **priority フィールドは API に無い。** 経験値が 3,000 / 10,000 / 28,000 / 65,000 の4段階に揃っているので P1〜P4 として推定表示（`getTaskPriorityTier`）。詳細は `docs/タスク検索機能仕様書.md`「受注条件・プライオリティ」。
+
 **`stationLevelRequirements`（ステーション間依存条件）の取得可否（2026-08-09 確認）:**
 - GraphQL: スキーマ上フィールドあり・現在停止中のため取得不可
 - JSON API: フィールドあり・取得可能。ただし `station` はIDの文字列のみ（GraphQLはオブジェクト）で、同レスポンスのステーション一覧で名前解決が必要

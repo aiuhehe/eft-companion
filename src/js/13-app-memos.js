@@ -240,16 +240,17 @@
     return ids;
   }, [planItems, apiData.tasks]);
 
-  // 着手可能タスク（planTaskIds内・未完了・全前提が完了済み）
+  // 着手可能タスク（planTaskIds内・未完了・全前提が完了済み・PMCレベルとトレーダー LL/信頼度条件を満たす）
   const planAvailableNow = useMemo(() => {
     if (!planTaskIds.size) return [];
+    const completedSet = new Set(completedTaskIds);
     return [...planTaskIds]
       .map(id => taskById[id])
       .filter(Boolean)
-      .filter(t => !completedTaskIds.includes(t.id))
-      .filter(t => (t.taskRequirements || []).every(r => completedTaskIds.includes(r.task.id)))
+      .filter(t => !completedSet.has(t.id))
+      .filter(t => getTaskUnlockStatus(t, { playerLevel, traderStatus, completedSet }).ok)
       .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
-  }, [planTaskIds, taskById, completedTaskIds]);
+  }, [planTaskIds, taskById, completedTaskIds, playerLevel, traderStatus]);
 
   // プランの着手可能タスクに登場するマップ一覧
   const planAvailableMaps = useMemo(() => {
@@ -400,6 +401,23 @@
     return map;
   }, [apiData.tasks]);
 
+  // ---- 受注条件（LL・レベル・前提）と解放グループ ----
+  const completedTaskSet = useMemo(() => new Set(completedTaskIds), [completedTaskIds]);
+  const getTaskUnlock = (task) => getTaskUnlockStatus(task, { playerLevel, traderStatus, completedSet: completedTaskSet });
+  // variableId → { members: [{ task, value }]（value 昇順）, doneCount }
+  const taskUnlockGroups = useMemo(() => {
+    const map = {};
+    apiData.tasks.forEach(task => {
+      (task.unlockGroups || []).forEach(g => {
+        if (!map[g.variableId]) map[g.variableId] = { members: [], doneCount: 0 };
+        map[g.variableId].members.push({ task, value: g.value });
+        if (completedTaskSet.has(task.id)) map[g.variableId].doneCount++;
+      });
+    });
+    Object.values(map).forEach(g => g.members.sort((a, b) => a.value - b.value || (a.task.name || '').localeCompare(b.task.name || '', 'ja')));
+    return map;
+  }, [apiData.tasks, completedTaskSet]);
+
   // ---- Task search ----
   const taskMaps = useMemo(() => {
     const names = new Set();
@@ -409,7 +427,7 @@
 
   const filteredTasks = useMemo(() => {
     const tabActive = !!tabAncestorIds;
-    if (!tabActive && !taskSearch.trim() && taskTraderFilter === 'all' && taskMapFilter === 'all' && taskTypeFilter === 'all') return [];
+    if (!tabActive && !taskSearch.trim() && taskTraderFilter === 'all' && taskMapFilter === 'all' && taskTypeFilter === 'all' && !onlyAvailableTasks) return [];
     const q = taskSearch.trim().toLowerCase();
     const apiFiltered = apiData.tasks.filter(t => {
       if (tabActive && !tabAncestorIds.has(t.id)) return false;
@@ -417,16 +435,17 @@
       if (taskTraderFilter !== 'all' && t.trader?.id !== taskTraderFilter) return false;
       if (taskMapFilter !== 'all' && !taskHasMap(t, taskMapFilter)) return false;
       if (taskTypeFilter !== 'all' && !taskMatchesType(t, taskTypeFilter)) return false;
+      if (onlyAvailableTasks && (completedTaskSet.has(t.id) || !getTaskUnlock(t).ok)) return false;
       if (q) return (t.name || '').toLowerCase().includes(q);
       return true;
     });
     // カスタムタスクは名前検索があるときのみ末尾に追加（プロジェクトタブ時は除外）
-    const customFiltered = (q && !tabActive) ? customTasks.filter(t => {
+    const customFiltered = (q && !tabActive && !onlyAvailableTasks) ? customTasks.filter(t => {
       if (!showCompletedTasks && completedTaskIds.includes(t.id)) return false;
       return (t.name || '').toLowerCase().includes(q);
     }) : [];
     return [...apiFiltered, ...customFiltered].slice(0, tabActive ? 999 : 50);
-  }, [apiData.tasks, customTasks, taskSearch, taskTraderFilter, taskMapFilter, taskTypeFilter, showCompletedTasks, completedTaskIds, tabAncestorIds]);
+  }, [apiData.tasks, customTasks, taskSearch, taskTraderFilter, taskMapFilter, taskTypeFilter, showCompletedTasks, completedTaskIds, tabAncestorIds, onlyAvailableTasks, completedTaskSet, playerLevel, traderStatus]);
 
   // ---- Barter helpers ----
   // barterKey = "resultItemId::traderId::level"

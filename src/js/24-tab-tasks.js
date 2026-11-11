@@ -69,6 +69,16 @@
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'flex-end' }}>
                     <span style={{ fontSize: 11, color: 'transparent' }}>_</span>
+                    <Tooltip text="Lv・LL・前提タスクを満たす未完了タスクだけ表示">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', height: 32 }}>
+                        <input type="checkbox" checked={onlyAvailableTasks} onChange={e => setOnlyAvailableTasks(e.target.checked)}
+                          style={{ cursor: 'pointer' }} />
+                        受注できるタスクのみ
+                      </label>
+                    </Tooltip>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: 11, color: 'transparent' }}>_</span>
                     <span style={{ fontSize: 12, color: 'var(--text-dim)', height: 32, display: 'flex', alignItems: 'center' }}>{apiData.tasks.length} タスク中</span>
                   </div>
                   {activeTabObj && (() => {
@@ -176,6 +186,8 @@
                     const items = getTaskItems(task);
                     const open = isOpen(task, ctx);
                     const exp = task.experience || 0;
+                    const prio = getTaskPriorityTier(exp);
+                    const unlock = getTaskUnlock(task);
                     const standings = task.finishRewards?.traderStanding || [];
                     const isDone = completedTaskIds.includes(task.id);
                     const ownTab = taskTabs.find(t => t.goalTaskId === task.id);   // このタスクをゴールにしたタブ
@@ -327,11 +339,23 @@
                               {task.trader?.name}
                             </span>
                             {task.minPlayerLevel > 0 && (
-                              <span className="task-muted">Lv{task.minPlayerLevel}+</span>
+                              <span className="task-muted" style={unlock.levelOk ? undefined : { color: 'var(--danger-text)' }}>Lv{task.minPlayerLevel}+</span>
                             )}
+                            {/* ヘッダーは「自トレーダーの LL」と「未達の他トレーダー LL」だけ（Collector のように多数あるタスクで行が膨らまないように）。全件は詳細の受注条件に表示 */}
+                            {unlock.traderReqs.filter(r => r.requirementType === 'level' && (r.trader?.id === task.trader?.id || !r.ok)).map((r, i) => (
+                              <span key={i} className={`task-ll-req${r.ok ? ' is-ok' : ''}`}>
+                                {!r.ok && <Icon name="lock" size={10} color="var(--danger-text)" />}
+                                {r.trader?.id === task.trader?.id ? '' : r.trader?.name + ' '}LL{r.value}
+                              </span>
+                            ))}
                           </div>
                           {/* EXP */}
                           <div className="task-cell-right">
+                            {prio && (
+                              <Tooltip text={`プライオリティ ${prio.tier}（経験値 ${prio.exp.toLocaleString()} の段階から推定）`}>
+                                <span className="task-prio-badge" style={{ color: prio.color, borderColor: prio.color }}>{prio.label}</span>
+                              </Tooltip>
+                            )}
                             {exp > 0
                               ? <span className="task-exp">+{exp.toLocaleString()}</span>
                               : <span className="task-muted">—</span>}
@@ -438,6 +462,62 @@
                                       </button>
                                     </Tooltip>
                                   )}
+                                </div>
+                              );
+                            })()}
+
+                            {/* 受注条件・解放グループ */}
+                            {(() => {
+                              const hasLv = task.minPlayerLevel > 0;
+                              const groups = (task.unlockGroups || []).map(g => ({ ...g, info: taskUnlockGroups[g.variableId] })).filter(g => g.info);
+                              const delayH = task.availableDelaySecondsMin > 0 ? Math.round(task.availableDelaySecondsMin / 360) / 10 : 0;
+                              if (!hasLv && unlock.traderReqs.length === 0 && groups.length === 0 && !task.dialogueRequired && !delayH && !prio) return null;
+                              return (
+                                <div className="task-unlock">
+                                  <div className="task-tree-title" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <Icon name={unlock.ok ? 'lock-open' : 'lock'} size={13} color={unlock.ok ? 'var(--state-ok)' : 'var(--danger)'} /> 受注条件
+                                  </div>
+                                  <div className="task-unlock-row">
+                                    {prio && <span className="task-unlock-chip" style={{ color: prio.color }}>プライオリティ {prio.tier}（経験値 {prio.exp.toLocaleString()}）</span>}
+                                    {hasLv && <span className={`task-unlock-chip ${unlock.levelOk ? 'is-ok' : 'is-ng'}`}>PMC Lv{task.minPlayerLevel} 以上（現在 Lv{playerLevel}）</span>}
+                                    {unlock.traderReqs.map((r, i) => (
+                                      <span key={i} className={`task-unlock-chip ${r.ok ? 'is-ok' : 'is-ng'}`}>{r.label}{r.requirementType === 'level' ? ' 以上' : ''}</span>
+                                    ))}
+                                    {task.dialogueRequired && <span className="task-unlock-chip">トレーダーとの会話で出現</span>}
+                                    {delayH > 0 && <span className="task-unlock-chip">条件達成から約 {delayH} 時間後に出現</span>}
+                                  </div>
+                                  {groups.map(g => {
+                                    const thresholds = [...new Set(g.info.members.map(m => m.value))];
+                                    return (
+                                      <div key={g.variableId} className="task-unlock-group">
+                                        <div className="tree-col-label">
+                                          解放グループ（このタスクは段階 {g.value}・グループ内 {g.info.doneCount}/{g.info.members.length} 完了）
+                                        </div>
+                                        {thresholds.map(v => (
+                                          <div key={v} className="task-unlock-step">
+                                            <span className={`task-unlock-step-label${v === g.value ? ' is-current' : ''}`}>段階 {v}</span>
+                                            {g.info.members.filter(m => m.value === v).map(m => {
+                                              const done = completedTaskSet.has(m.task.id);
+                                              const self = m.task.id === task.id;
+                                              return (
+                                                <span key={m.task.id}
+                                                  onClick={e => { e.stopPropagation(); if (!self) searchForTaskByName(m.task.name, m.task.id); }}
+                                                  className="task-chip"
+                                                  style={{ cursor: self ? 'default' : 'pointer', fontWeight: self ? 700 : undefined,
+                                                    color: done ? 'var(--state-ok-text)' : 'var(--text-primary)',
+                                                    border: `1px solid ${self ? 'var(--accent)' : done ? 'var(--state-ok-border-weak)' : 'var(--border)'}`,
+                                                    background: done ? 'var(--state-ok-bg-weak)' : 'transparent' }}>
+                                                  {done && <Icon name="check" size={10} color="var(--state-ok)" />}
+                                                  {m.task.name}
+                                                </span>
+                                              );
+                                            })}
+                                          </div>
+                                        ))}
+                                        <div className="task-muted">段階はゲーム内のグループ進行値の条件です。進行値の増え方は API に無いため出現の判定はしていません（同じグループのタスクを数件完了すると次の段階が出る想定）。</div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               );
                             })()}

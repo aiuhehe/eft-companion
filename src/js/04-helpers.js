@@ -161,3 +161,47 @@ function armorZoneKind(label) {
 }
 // プレート一覧の列: クラス / 耐久値 / ブラント透過率 / アイコン / 名前 / 部位 / 入手手段
 const ARMOR_GRID_COLS = '40px 52px 66px 34px minmax(130px,1fr) minmax(0,0.8fr) minmax(0,1.4fr)';
+
+// ===== タスクの受注条件・プライオリティ（2026-11-11） =====
+// API に priority の値はないため、経験値の段階（3,000 / 10,000 / 28,000 / 65,000）から推定する。
+// 同じ解放グループ（globalVariable）のタスクはほぼ全件この4段階のどれかに揃っている
+const TASK_PRIORITY_TIERS = [
+  { tier: 1, exp: 3000,  label: 'P1', color: 'var(--text-secondary)' },
+  { tier: 2, exp: 10000, label: 'P2', color: 'var(--info)' },
+  { tier: 3, exp: 28000, label: 'P3', color: 'var(--warn-text)' },
+  { tier: 4, exp: 65000, label: 'P4', color: 'var(--danger-text)' },
+];
+function getTaskPriorityTier(exp) {
+  return TASK_PRIORITY_TIERS.find(t => t.exp === exp) || null;
+}
+function _compareReq(actual, method, value) {
+  switch (method) {
+    case '>':  return actual > value;
+    case '<':  return actual < value;
+    case '<=': return actual <= value;
+    case '=': case '==': return actual === value;
+    default:   return actual >= value;
+  }
+}
+// 受注条件の判定。group（解放グループ）はカウンターの増え方が API に無く判定できないので blocking に含めない
+// 戻り値: { ok, levelOk, traderReqs: [{ ...req, ok, label }], prereqs: [{ id, name, ok }] }
+function getTaskUnlockStatus(task, { playerLevel, traderStatus, completedSet }) {
+  const levelOk = !(task.minPlayerLevel > 0) || playerLevel >= task.minPlayerLevel;
+  const traderReqs = (task.traderRequirements || []).map(r => {
+    const st = traderStatus?.[r.trader?.id] || {};
+    const isLevel = r.requirementType === 'level';
+    const actual = isLevel ? (st.ll || 1) : (parseFloat(st.rep) || 0);
+    const ok = _compareReq(actual, r.compareMethod, r.value);
+    const label = isLevel
+      ? `${r.trader?.name} LL${r.value}`
+      : `${r.trader?.name} 信頼度 ${r.compareMethod} ${r.value}`;
+    return { ...r, ok, label };
+  });
+  // 前提が「完了」以外（受注中・失敗）の条件はアプリで追跡していないので満たしている扱い
+  const prereqs = (task.taskRequirements || []).map(r => ({
+    id: r.task.id, name: r.task.name,
+    ok: completedSet.has(r.task.id) || (r.status?.length > 0 && !r.status.includes('complete')),
+  }));
+  const ok = levelOk && traderReqs.every(r => r.ok) && prereqs.every(r => r.ok);
+  return { ok, levelOk, traderReqs, prereqs };
+}
