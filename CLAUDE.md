@@ -7,8 +7,9 @@
 | `src/js/*.js` | **ソースコード（編集対象）** — 番号順に結合される JSX/JS |
 | `src/head.html` | HTML骨格の先頭（`<script type="text/babel">` 開始タグまで） |
 | `src/tail.html` | HTML骨格の末尾（`</script></body></html>`） |
-| `build.sh` | ビルドスクリプト（Mac / WSL / Git Bash）。`--dist` で公開用 `dist/`（`index.html` 化・マップ画像なし）も作成 |
-| `build.ps1` | ビルドスクリプト（Windows PowerShell） |
+| `build.sh` | ビルドスクリプト（Mac / WSL / Git Bash）。`--dist` で公開用 `dist/`（`index.html` 化・マップ画像なし）も作成。環境変数 `DISCORD_BOT_URL`（無ければ `.env` の同名の行）があれば `__DISCORD_BOT_URL__` を置き換える（`pages.yml` はシークレットから渡す） |
+| `.env` / `.env.example` | ローカルビルド用の設定（`DISCORD_BOT_URL=…`）。`.env` は gitignore 済み・`.env.example` をコピーして作る |
+| `build.ps1` | ビルドスクリプト（Windows PowerShell）。`DISCORD_BOT_URL` の扱いは `build.sh` と同じ。**ASCII のみで書く**（PowerShell 5.1 は BOM なし UTF-8 を ANSI で読むため日本語が壊れる） |
 | `eft-tool.html` | **ビルド出力（直接編集しない）** — `build.sh` or `build.ps1` で生成 |
 | `style.css` | スタイルシート（`<link>` で読み込み） |
 | `docs/` | 機能仕様書・設計ドキュメント |
@@ -17,7 +18,7 @@
 | `.github/workflows/ci.yml` | `main` 向け PR ごとに `./build.sh --dist` を実行してビルドが通るか確認（公開はしない） |
 | `.github/workflows/pages.yml` | `main` への push で `./build.sh --dist` → `dist/` を GitHub Pages（https://aiuhehe.github.io/eft-companion/）に公開 |
 | `.github/workflows/discord-notify.yml` + `.github/scripts/discord_notify.py` | PR の動き（作成・レビュー・コメント・CI失敗・Pages公開・マージ）を Discord フォーラムへ通知（1 PR = 1 投稿）＋毎朝のまとめ。仕様は `docs/Discord通知仕様書.md` |
-| `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`maps/`・開発用作業ファイルを除外 |
+| `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`.env`・`maps/`・開発用作業ファイルを除外 |
 
 ### ソースファイル一覧（`src/js/`）
 
@@ -33,6 +34,7 @@
 | `07-charts.js` | FleaHistoryChart, MultiLineFleaChart (JSX) | ~295 |
 | `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`） | ~135 |
 | `09-manual-unlocks.js` | 手動登録したタスク↔アイテム紐づけの読み書き | ~35 |
+| `09-discord-link.js` | Discord 出撃共有の連携: Bot の URL 定数 `DISCORD_BOT_URL`（ビルド時に環境変数で置換）・`POST/DELETE /api/link`・`PUT /api/share`・設定タブの `DiscordLinkSection` (JSX) | ~260 |
 | `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData`・JSON 保存 `downloadRaidShareData` | ~110 |
 | `10-app-state.js` | `function App() {` + 全useState/useRef + 初期effect | ~740 |
 | `11-app-effects.js` | ジャーナル/タスクタブ state + 永続化effect | ~175 |
@@ -171,6 +173,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Seasonは `eft_manual_unlocks_v1__season_N` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
 | `eft_maps_v1` | マップ画像メタデータ（`{ [mapName]: { file, width, height } }`）— 自動取得・グローバル |
 | `eft_task_pins_v1` | タスク目標のピン座標配列（`[{ id, mapName, taskId, objectiveId, x, y, memo?, requiredItems?, memoImages? }]`）— グローバル。`memoImages` は詳細位置画像 `[{ id, name(省略名), dataUrl(JPEG) }]` |
+| `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, botUrl? }`（連携中＝同期する。オン/オフ設定は持たない） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
 | `eft_custom_items_v1` | 登録タスク品（API に無いクエストアイテム等）`[{ id:'citem_…', name, shortName, iconLink(128px PNG dataURL) }]` — グローバル。ピンの `requiredItems` から id 参照 |
 
 #### モードごとに独立するキー（`__${mode}` サフィックス付き）
