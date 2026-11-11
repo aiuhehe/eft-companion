@@ -310,10 +310,10 @@ Bot（Discord のボード）とアプリ（仲間のボード）は、この節
 2. アプリの設定タブ「Discord 連携」に **Bot の URL** と連携コードを入力する
 3. アプリが `POST /api/link { code }` を送る → Bot が**連携トークン**を発行 → アプリは localStorage に保存する
 4. Bot は `/raid link` の返答を「連携が完了しました」に書き換える（返答の編集は15分以内に限られるため、それを過ぎたら書き換えない）
-5. コードの入力間違いが続いたら、一時的に受け付けを止める（総当たり対策）
+5. コードの入力間違いが続いたら、一時的に受け付けを止める（総当たり対策。送信元ごとと全体の両方に上限・§11.3）
 
 **補助（「アプリで開く」リンク・GitHub Pages 版のみ）**
-- 同じメッセージに `https://aiuhehe.github.io/eft-companion/` へのリンクを付け、6桁コードと Bot の URL を**ハッシュ部（`#` 以降・サーバーに送られない部分）**に入れる。
+- 同じメッセージに `https://aiuhehe.github.io/eft-companion/` へのリンクを付け、6桁コードと Bot の URL を**ハッシュ部（`#` 以降・サーバーに送られない部分）**に入れる。形式は `#link=<6桁>&bot=<Bot の URL を encodeURIComponent したもの>`（例: `#link=123456&bot=https%3A%2F%2Ftarkov-raid-bot.example.workers.dev`）。アプリは `URLSearchParams` で `link` と `bot` を読み取る（2026-11-11・BOT-3 で確定）。
 - アプリは開いたらハッシュ部を読み取ってすぐアドレスバーから消し、「この Discord アカウントと連携しますか？」と確認してから `POST /api/link` を送る（開いただけでは連携しない）。
 
 **解除**: `/raid unlink`（そのユーザーの全トークンを無効化）か、アプリの「連携解除」（`DELETE /api/link`）。
@@ -339,7 +339,7 @@ Bot（Discord のボード）とアプリ（仲間のボード）は、この節
 
 | メソッド・パス | 認証 | 内容 | 主な応答 |
 |---|---|---|---|
-| `POST /api/link` | 本文の連携コード | トークン発行 | 200 `{ token, userName }` / 400 コード違い・期限切れ / 429 試行回数超過 |
+| `POST /api/link` | 本文の連携コード `{ code: "123456" }` | トークン発行 | 200 `{ token, userName }` / 400 `{ error: "invalid_code" }`（コード違い・使用済み・6桁の数字でない）・`{ error: "expired_code" }` / 429 `{ error: "too_many_attempts" }` 試行回数超過 |
 | `DELETE /api/link` | `Authorization: Bearer <token>` | このトークンを無効化 | 204 |
 | `PUT /api/share` | `Authorization: Bearer <token>` | 共有データを登録・更新 | 204 / 401 トークン無効 / 413 大きすぎる / 422 形式違い・未対応の `v` / 429 送りすぎ |
 | `GET /api/boards` | `Authorization: Bearer <token>` | 自分が参加中のボード一覧（§11.4） | 200 / 401 |
@@ -354,6 +354,7 @@ Bot（Discord のボード）とアプリ（仲間のボード）は、この節
 **通信のきまり**
 - **CORS**: 送信元では制限しない（`Access-Control-Allow-Origin: *`。`file://` の `null` も含む）。Cookie は使わず、認証はヘッダーの連携トークンだけなので、送信元を問わなくても安全性は落ちない。プリフライト（`OPTIONS`）では `Authorization` と `Content-Type` ヘッダーを許可する。
 - 送信頻度の上限（Bot 側の保護）: `PUT /api/share` は1ユーザー1分に6回まで。超えたら 429 と `Retry-After` を返す。アプリは最後の変更から30秒待ってまとめて送るので、普通に使っていればこの上限には届かない。届くのは「今すぐ送信」を連打したときや、不具合でアプリが送り続けたときだけ（D1 の書き込み回数と Discord のメッセージ編集を守るための上限）。
+- 連携コードの試行回数の上限（総当たり対策）: `POST /api/link` は送信元ごとに10分で10回、全体（送信元を問わない）で10分で50回まで。超えたら正しいコードでも 429 と `Retry-After`（窓の残り秒数）を返す。アプリは `Retry-After` の秒数を「しばらく待ってからもう一度お試しください（約N分）」のように出す。6桁の数字でない入力は数えない（アプリ側で全角数字・空白を整えてから送る）。
 - 本文の上限: 1MB（§12）。
 
 **連携トークンの扱い**
