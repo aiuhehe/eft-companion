@@ -409,6 +409,7 @@ function App() {
   const [taskMapFilter, setTaskMapFilter] = useState('all');
   const [taskTypeFilter, setTaskTypeFilter] = useState('all');
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+  const [onlyAvailableTasks, setOnlyAvailableTasks] = useState(false); // タスク検索: 受注条件（Lv・LL・前提）を満たすものだけ
   const [pinnedBoardOpen, setPinnedBoardOpen] = useState(true);
   const [openTaskIds, setOpenTaskIds] = useState([]);           // 詳細展開中のタスクID（進行中ボード用）
   const [openSearchTaskIds, setOpenSearchTaskIds] = useState([]); // 詳細展開中のタスクID（検索結果用）

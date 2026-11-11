@@ -157,6 +157,8 @@ const QUERIES = {
       trader { id name }
       minPlayerLevel
       taskRequirements { task { id name } status }
+      traderRequirements { trader { id name } requirementType compareMethod value }
+      availableDelaySecondsMin availableDelaySecondsMax
       objectives {
         id description type
         maps { name }

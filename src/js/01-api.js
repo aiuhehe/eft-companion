@@ -233,6 +233,21 @@ function _transformTasks(data, itemsMap, mapsLocale) {
         task: { id: r.task, name: taskNameMap[r.task] || '' },
         status: r.status || [],
       })),
+      // トレーダー条件（LL / 評判）。LL 到達でまとめて出てくるタスクの判定に使う
+      traderRequirements: (task.traderRequirements || []).map(r => ({
+        trader: { id: r.trader, name: TRADER_NAMES[r.trader] || r.trader },
+        requirementType: r.requirementType || 'level',
+        compareMethod: r.compareMethod || '>=',
+        value: r.value ?? 0,
+      })),
+      // 解放グループ（globalVariable）。同じ variableId のタスク群が段階的に出てくる。JSON API のみ
+      unlockGroups: (task.otherRequirements || [])
+        .filter(r => r.type === 'globalVariable' && r.variableId)
+        .map(r => ({ variableId: r.variableId, compareMethod: r.compareMethod || '>=', value: r.value ?? 0 })),
+      // トレーダーとの会話で出てくるタスク。JSON API のみ
+      dialogueRequired: (task.otherRequirements || []).some(r => r.type === 'dialogue'),
+      availableDelaySecondsMin: task.availableDelaySecondsMin || 0,
+      availableDelaySecondsMax: task.availableDelaySecondsMax || 0,
       objectives,
       finishRewards: {
         traderStanding: (task.finishRewards?.traderStanding || []).map(s => ({
