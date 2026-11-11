@@ -98,13 +98,13 @@ async function discordPutShare(botUrl, token, data) {
   return { status: 'error', httpStatus: res.status };
 }
 
-/** 最終同期時刻の表示（今日なら「14:32」、それ以外は「11/12 14:32」） */
+/** 最終同期日時の表示「2026年11月12日 14:32」 */
 function formatDiscordSyncTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d)) return '';
   const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  return d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${hm}`;
 }
 
 /**
@@ -249,9 +249,8 @@ function DiscordLinkSection({ getShareData }) {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Icon name="x" size={11} color="currentColor" /> {busy === 'unlink' ? '解除中…' : '連携解除'}
           </button>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 6 }}>
-            <Icon name="clock" size={11} color="var(--text-secondary)" />
-            {link.lastSyncAt ? `${formatDiscordSyncTime(link.lastSyncAt)} に同期` : 'まだ同期していません'}
+          <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 6 }}>
+            最終同期日時: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ同期していません'}
           </span>
         </div>
       )}
@@ -266,7 +265,6 @@ function DiscordLinkSection({ getShareData }) {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Icon name="upload" size={11} color="currentColor" /> 送る内容を確認
           </button>
-          <span style={hint}>送るのは進行タスク（ボード登録済み・未完了）の目標だけ</span>
         </div>
       </div>
     </div>
