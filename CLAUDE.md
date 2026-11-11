@@ -111,6 +111,8 @@
 - **ソース分割 + ビルド結合** — `src/js/` の JSX ファイルを `build.sh`/`build.ps1` で結合し `eft-tool.html` を生成。ブラウザで直接開く（`file://` 可）
 - スタイルは `style.css`（ビルド不要で直接編集可）、ロジック(JSX)は `src/js/` 以下に分割
 - React 18 + Babel (CDN) + Tailwind (CDN)
+- **Babel は JSX 変換のみ**（`src/head.html` の `<script type="text/babel" data-presets="react">`・2026-11-11・Issue #24）。既定 preset（env 込み）だと約 825KB のソース変換に約 26 秒かかり、その間メインスレッドが止まって「ページが応答していません」の主因になっていた（`react` のみなら約 0.7 秒）。ES2015+ 構文はブラウザがそのまま実行する
+  - **`const` / `let` がネイティブになったため、宣言より前の参照は `ReferenceError`（TDZ）で即クラッシュする。** App 内で `useCallback` / `useEffect` の依存配列や `useMemo` / `useState` 初期化で使う値は、必ずその宣言より後（ファイル番号順で後）に書くこと。以前は env 変換で `var` 化され、依存配列が常に `undefined`（＝依存が効かない潜在バグ）になっていた
 - **データ保存**: localStorage（モードシステムあり・後述）＋ IndexedDB `eft_media`（利用者が差し替えたマップ画像のみ・ストア `mapOverrides`）。全データバックアップ（設定タブ）は両方を含む
 
 ### API 接続状況（2026-08-09 確認）

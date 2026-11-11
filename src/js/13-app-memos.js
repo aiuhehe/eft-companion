@@ -367,6 +367,20 @@
     }
   };
 
+  // イベントタスクの完了トグル／判定（apiId があるものは toggleComplete＝completedTaskIds 側で管理）。
+  // toggleComplete より後に宣言する（前に置くと依存配列が宣言前参照になる）
+  const toggleBlackoutDone = useCallback((key, apiId) => {
+    if (apiId) { toggleComplete(apiId); return; }
+    setBlackoutDone(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem(modeKey('eft_blackout_v1'), JSON.stringify(next));
+      return next;
+    });
+  }, [toggleComplete]);
+  const isBlackoutDone = useCallback((task) =>
+    task.apiId ? completedTaskIds.includes(task.apiId) : !!blackoutDone[task.key]
+  , [blackoutDone, completedTaskIds]);
+
   // タスクの持ち物（type付き）を抽出
   const getTaskItems = (task) =>
     (task.objectives || [])
@@ -796,32 +810,6 @@
     setOcrProgress(0);
   }, []);
 
-  // Ctrl+V ペースト（タスク品登録モーダル表示中はその画像へ。それ以外はタブに応じてスタッシュOCR or レイドOCRへ振り分け）
-  const mapsItemFormOpen = !!mapsItemForm;
-  useEffect(() => {
-    const onPaste = (e) => {
-      if (e.defaultPrevented) return; // ピン詳細位置画像など、個別の貼り付け処理で消費済み
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          if (mapsItemFormOpen) {
-            e.preventDefault();
-            imageFileToIconDataUrl(item.getAsFile())
-              .then(url => setMapsItemForm(f => f && { ...f, iconLink: url, error: '' }))
-              .catch(err => setMapsItemForm(f => f && { ...f, error: err.message }));
-          }
-          else if (activeTab === 'maps') return; // マップタブでは OCR に回さない
-          else if (activeTab === 'raid') handleRaidOcrFiles([item.getAsFile()]);
-          else handleOcrFile(item.getAsFile());
-          break;
-        }
-      }
-    };
-    window.addEventListener('paste', onPaste);
-    return () => window.removeEventListener('paste', onPaste);
-  }, [handleOcrFile, handleRaidOcrFiles, activeTab, mapsItemFormOpen]);
-
   // 候補ドロップダウン外クリックで閉じる・検索リセット
   useEffect(() => {
     setOcrDropdownSearch('');
@@ -1002,6 +990,32 @@
     setRaidCompleteCandidates([]);
     setRaidOcrProgress(0);
   }, []);
+
+  // Ctrl+V ペースト（タスク品登録モーダル表示中はその画像へ。それ以外はタブに応じてスタッシュOCR or レイドOCRへ振り分け）
+  const mapsItemFormOpen = !!mapsItemForm;
+  useEffect(() => {
+    const onPaste = (e) => {
+      if (e.defaultPrevented) return; // ピン詳細位置画像など、個別の貼り付け処理で消費済み
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          if (mapsItemFormOpen) {
+            e.preventDefault();
+            imageFileToIconDataUrl(item.getAsFile())
+              .then(url => setMapsItemForm(f => f && { ...f, iconLink: url, error: '' }))
+              .catch(err => setMapsItemForm(f => f && { ...f, error: err.message }));
+          }
+          else if (activeTab === 'maps') return; // マップタブでは OCR に回さない
+          else if (activeTab === 'raid') handleRaidOcrFiles([item.getAsFile()]);
+          else handleOcrFile(item.getAsFile());
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [handleOcrFile, handleRaidOcrFiles, activeTab, mapsItemFormOpen]);
 
   const matchTaskOcrLines = useCallback((rawText) => {
     const calcSim = (a, b) => {
