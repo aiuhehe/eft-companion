@@ -35,7 +35,7 @@
 | `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`） | ~135 |
 | `09-manual-unlocks.js` | 手動登録したタスク↔アイテム紐づけの読み書き | ~35 |
 | `09-discord-link.js` | Discord 出撃共有の連携: Bot の URL 定数 `DISCORD_BOT_URL`（ビルド時に環境変数で置換）・`POST/DELETE /api/link`・`PUT /api/share`・自動同期フック `useDiscordSync`（30秒まとめ送信・同じ内容なら送らない）・ヘッダーの即時同期ボタン `DiscordSyncButton`・設定タブの `DiscordLinkSection` (JSX) | ~460 |
-| `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData`・JSON 保存 `downloadRaidShareData` | ~110 |
+| `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData` | ~100 |
 | `10-app-state.js` | `function App() {` + 全useState/useRef + 初期effect | ~740 |
 | `11-app-effects.js` | ジャーナル/タスクタブ state + 永続化effect | ~175 |
 | `12-app-callbacks.js` | ammo memo + plan/journal/wipe callbacks + API読込 | ~500 |
