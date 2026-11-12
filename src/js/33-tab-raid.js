@@ -312,7 +312,11 @@
           <div>
             {/* ─── マップ選択 ─── */}
             <div className="section">
-              <div className="section-title"><Icon name="map" size={14} color="var(--accent)" /> マップ選択</div>
+              <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name="map" size={14} color="var(--accent)" /> マップ選択</span>
+                {/* Discord 出撃共有の同期状態（連携中だけ・設定タブと同じ表示・Issue #34） */}
+                <DiscordSyncStatus discord={discordSync} showLabel />
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {RAID_MAPS.map(m => (
                   <button key={m}

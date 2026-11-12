@@ -334,8 +334,26 @@ function DiscordSyncTime({ discord }) {
   return <span className="header-sub discord-sync-time">最終同期: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ'}</span>;
 }
 
-/** 設定タブ「Discord 連携」セクション。discord は useDiscordSync の戻り値、getShareData() は現在の共有データ v1 を返す */
-function DiscordLinkSection({ discord, getShareData }) {
+/**
+ * 同期状態「最終同期日時: …」＋メッセージ（設定タブ・出撃準備タブ共通・Issue #34）。連携中だけ出す。
+ * 送るのはヘッダーの即時同期ボタンと30秒後の自動送信なので、ここに送信ボタンは置かない（§11.2）
+ */
+function DiscordSyncStatus({ discord, showLabel = false, style }) {
+  const { link, syncMsg } = discord;
+  if (!link.token) return null;
+  return (
+    <span className="discord-sync-status" style={style}>
+      {showLabel && <Icon name="link" size={12} color="var(--text-dim)" />}
+      <span>
+        {showLabel && 'Discord '}最終同期日時: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ同期していません'}
+      </span>
+      <DiscordSyncMsg msg={syncMsg} style={{ marginLeft: 0 }} />
+    </span>
+  );
+}
+
+/** 設定タブ「Discord 連携」セクション。discord は useDiscordSync の戻り値 */
+function DiscordLinkSection({ discord }) {
   const { link, updateLink: update, syncMsg, clearSyncMsg } = discord;
   const [code, setCode] = useState('');
   const [botUrlDraft, setBotUrlDraft] = useState(() => loadDiscordLink().botUrl || '');
@@ -426,25 +444,9 @@ function DiscordLinkSection({ discord, getShareData }) {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Icon name="x" size={11} color="currentColor" /> {busy === 'unlink' ? '解除中…' : '連携解除'}
           </button>
-          <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 6 }}>
-            最終同期日時: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ同期していません'}
-          </span>
-          <DiscordSyncMsg msg={syncMsg} />
+          <DiscordSyncStatus discord={discord} style={{ marginLeft: 6 }} />
         </div>
       )}
-
-      {/* 開発中だけ出す枠。同期状態（#34）ができたら枠ごと消す */}
-      <div className="dev-only-box">
-        <div className="dev-only-box-label">開発中（今だけ表示）</div>
-        <div style={rowStyle}>
-          <button className="btn btn-gray btn-sm"
-            title="Discord 出撃共有で送る内容（進行タスクの目標・全マップ分）を JSON で保存して確認する"
-            onClick={() => downloadRaidShareData(getShareData())}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Icon name="upload" size={11} color="currentColor" /> 送る内容を確認
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

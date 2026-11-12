@@ -100,7 +100,7 @@
           </div>
 
           {/* Discord 出撃共有の連携（09-discord-link.js） */}
-          <DiscordLinkSection discord={discordSync} getShareData={() => raidShareData} />
+          <DiscordLinkSection discord={discordSync} />
 
           {/* Trader Status */}
           <div className="section">

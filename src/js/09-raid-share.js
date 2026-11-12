@@ -1,5 +1,5 @@
 // ── Discord 出撃共有: 共有データ形式 v1（形式の正本は aiuhehe/tarkov-raid-bot の docs/設計書.md §4・作り方は docs/Discord出撃共有Bot設計書.md §4.5）──
-// 自動送信・「送る内容を確認」（JSON 保存）で共通に使う。App の外の純粋関数。
+// 自動送信で使う。App の外の純粋関数。
 
 const RAID_SHARE_VERSION = 1;
 
@@ -94,15 +94,4 @@ function buildRaidShareData({ tasks, customTasks, pinnedTaskIds, completedTaskId
     createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
     tasks: outTasks,
   };
-}
-
-/** 「送る内容を確認」: 共有データを eft_raidshare_YYYY-MM-DD.json として保存 */
-function downloadRaidShareData(data) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `eft_raidshare_${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
