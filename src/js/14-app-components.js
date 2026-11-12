@@ -1121,4 +1121,12 @@
     );
   };
 
+  // ================== DISCORD 出撃共有の自動送信（09-discord-link.js・§11.2）==================
+  // 共有データの元（進行タスク・目標チェック・タスク完了など）が変わったら30秒後に送る。ヘッダーの即時同期ボタン・設定タブと共有
+  const raidShareData = useMemo(() => buildRaidShareData({
+    tasks: apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked,
+    activeMode, gameMode, uiLang, playerLevel,
+  }), [apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, gameMode, uiLang, playerLevel]);
+  const discordSync = useDiscordSync(raidShareData, apiData.tasks.length > 0);
+
   // ================== RENDER ==================

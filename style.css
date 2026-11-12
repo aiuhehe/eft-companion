@@ -570,6 +570,15 @@
 .discord-cmd code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; color: var(--text-primary); }
 .discord-cmd-copy { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; border: none; border-radius: 3px; background: transparent; color: var(--text-secondary); cursor: pointer; }
 .discord-cmd-copy:hover { background: var(--bg-secondary); color: var(--accent); }
+/* ヘッダー右（15-render-open.js）: 2段のグリッド。1段目 [メッセージ][JSON API 接続中][Discord 同期][歯車]、2段目は「最終取得」「最終同期」を各列の下に右揃え */
+.header-right { display: grid; grid-template-columns: auto auto auto auto; column-gap: 10px; row-gap: 3px; align-items: center; justify-items: end; }
+.header-msgs { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.header-sub { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.header-sub.discord-sync-time { font-size: 10px; }
+/* ヘッダーの Discord 即時同期ボタン（09-discord-link.js の DiscordSyncButton） */
+.discord-sync-btn { display: inline-flex; align-items: center; gap: 6px; min-width: 150px; justify-content: center; }
+.discord-sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.discord-sync-msg { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; max-width: 340px; }
 /* 開発中だけ出している UI の枠（完成したら JSX ごと消す） */
 .dev-only-box { margin-top: 12px; padding: 8px 10px 10px; border: 1px dashed var(--warn); border-radius: 6px; background: var(--warn-bg-weak); }
 .dev-only-box-label { font-size: 11px; font-weight: bold; color: var(--warn-text); margin-bottom: 6px; }

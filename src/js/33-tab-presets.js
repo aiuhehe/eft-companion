@@ -167,7 +167,7 @@
               {apiData.items.length === 0 && (
                 <div style={{ marginTop: 10, color: 'var(--warn)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Icon name="alert-triangle" size={12} color="var(--warn)" />
-                  フリマ価格を表示するには「APIデータ取得」を先に実行してください。
+                  フリマ価格はAPIデータの読み込み後に表示されます（読み込めないときはページをリロードしてください）。
                 </div>
               )}
 
@@ -735,7 +735,7 @@
                     {/* ─── カテゴリタブ ─── */}
                     {cats.length === 0 ? (
                       <div style={{ marginTop: 10, color: 'var(--warn)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Icon name="alert-triangle" size={12} color="var(--warn)" /> APIデータ取得後に表示されます。
+                        <Icon name="alert-triangle" size={12} color="var(--warn)" /> APIデータの読み込み後に表示されます。
                       </div>
                     ) : (
                       <>

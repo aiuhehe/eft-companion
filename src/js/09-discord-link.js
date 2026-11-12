@@ -79,7 +79,7 @@ async function discordUnlink(botUrl, token) {
 }
 
 /**
- * PUT /api/share（共有データ v1 をそのまま送る）。§11.2 の応答の扱い。自動同期（#33）で使う。
+ * PUT /api/share（共有データ v1 をそのまま送る）。§11.2 の応答の扱い。useDiscordSync が使う。
  * 戻り値 { status: 'ok' | 'unauthorized' | 'outdated' | 'rate' | 'network' | 'error', retryAfter?, httpStatus? }
  */
 async function discordPutShare(botUrl, token, data) {
@@ -145,13 +145,52 @@ function DiscordCommandChip({ command }) {
   );
 }
 
-/** 設定タブ「Discord 連携」セクション。getShareData() は現在の共有データ v1 を返す */
-function DiscordLinkSection({ getShareData }) {
+// ── 自動送信・即時同期（§11.2・Issue #33 / #54）──
+
+const DISCORD_SYNC_DELAY_MS = 30 * 1000;          // 最後の変更から30秒待ってまとめて送る
+const DISCORD_SHARE_FRESH_MS = 6 * 60 * 60 * 1000; // Bot は6時間で共有データを消すので、それより前に送った内容なら同じでも送り直す
+const DISCORD_RATE_FALLBACK_SEC = 60;              // 429 で Retry-After が読めないときの待ち秒数
+const DISCORD_SYNC_MIN_SPIN_MS = 800;              // 即時同期ボタンの「同期中…」を最低これだけ出す（押した手応え・連打防止）
+
+/** 文字列のハッシュ（16進32文字・cyrb53 系を2つの種で）。前回送った内容と比べるだけなので暗号強度は要らない */
+function _discordHash(str) {
+  const h = (seed) => {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+  };
+  return h(0) + h(1);
+}
+
+/** 共有データの内容ハッシュ（作成日時 createdAt は毎回変わるので除く） */
+const raidShareHash = (data) => _discordHash(JSON.stringify({ ...data, createdAt: undefined }));
+
+/**
+ * Discord 連携の状態と自動送信（App の中で1回だけ呼ぶ）。
+ * shareData: 現在の共有データ v1（useMemo 済み）／ ready: API のタスクを読み込み済みか（読む前の空の内容は送らない）
+ * 戻り値: { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg }
+ *  - sending: 同期中（即時同期ボタンを押したときは、送らなかったときも最低 DISCORD_SYNC_MIN_SPIN_MS は true）
+ *  - syncMsg: { kind: 'error' | 'info', text } 同期状態の欄に出すメッセージ（次に成功したら消す）
+ */
+function useDiscordSync(shareData, ready) {
   const [link, setLink] = useState(loadDiscordLink);
-  const [code, setCode] = useState('');
-  const [botUrlDraft, setBotUrlDraft] = useState(() => loadDiscordLink().botUrl || '');
-  const [busy, setBusy] = useState('');       // '' | 'link' | 'unlink'
-  const [error, setError] = useState('');     // エラーだけ出す（成功・解除のお知らせは出さない）
+  const [sending, setSending] = useState(false);
+  const [waitSec, setWaitSec] = useState(0);       // 429 で送り直しを待っている残り秒数
+  const [syncMsg, setSyncMsg] = useState(null);
+  const sendingRef = useRef(false);
+  const timerRef = useRef(null);                    // 30秒待ち / 429 の送り直し
+  const waitUntilRef = useRef(0);
+  const failedHashRef = useRef('');                 // 413/422 になった内容（中身が変わるまで送り直さない）
+
+  const shareHash = useMemo(() => (shareData ? raidShareHash(shareData) : ''), [shareData]);
+  const latestRef = useRef({ shareData, shareHash });
+  latestRef.current = { shareData, shareHash };
 
   // 別タブで連携・解除したときに追従する
   useEffect(() => {
@@ -161,12 +200,147 @@ function DiscordLinkSection({ getShareData }) {
   }, []);
 
   // 保存済みの値に差分を当てて保存（非同期処理の後でも古い state で上書きしない）
-  const update = (patch) => {
+  const updateLink = useCallback((patch) => {
     const next = { ...loadDiscordLink(), ...patch };
     Object.keys(next).forEach(k => next[k] === undefined && delete next[k]);
     saveDiscordLink(next);
     setLink(next);
+  }, []);
+
+  /** 前回送った内容と同じで、Bot 側にまだ残っている（送ってから6時間以内）か */
+  const isSameAsSent = (cur, hash) =>
+    !!hash && cur.lastShareHash === hash && Date.now() - (Date.parse(cur.lastSentAt) || 0) < DISCORD_SHARE_FRESH_MS;
+
+  const doSyncRef = useRef(null);
+  // 同期1回分。重ねて走らないよう sendingRef で鍵をかける（ref なので連打の2回目以降は描画を待たずに弾く）
+  const doSync = async (manual) => {
+    if (sendingRef.current) return;                  // 同期中は重ねて送らない
+    if (waitUntilRef.current > Date.now()) return;   // 429 の待ち中（送り直しは予約済み）
+    sendingRef.current = true;
+    const started = Date.now();
+    if (manual) setSending(true);                    // 押したら、送らないときも「同期中…」にしてボタンを押せなくする
+    try {
+      await syncOnce(manual);
+    } finally {
+      if (manual) {
+        const rest = DISCORD_SYNC_MIN_SPIN_MS - (Date.now() - started);
+        if (rest > 0) await new Promise(r => setTimeout(r, rest));
+      }
+      sendingRef.current = false; setSending(false);
+    }
   };
+
+  const syncOnce = async (manual) => {
+    clearTimeout(timerRef.current);
+    const cur = loadDiscordLink();
+    if (!cur.token) return;
+    const { shareData: data, shareHash: hash } = latestRef.current;
+    if (!data) return;
+    if (isSameAsSent(cur, hash)) {
+      // 前回送った内容と同じなら送らない。押したときは最終同期日時を今にする（「同期中…」の後に日時が変わる）
+      if (manual) updateLink({ lastSyncAt: new Date().toISOString() });
+      return;
+    }
+    if (hash === failedHashRef.current) return;      // 413/422 になった内容は送り直さない（メッセージは出したまま）
+    const botUrl = getDiscordBotUrl(cur);
+    if (!botUrl) { setSyncMsg({ kind: 'error', text: 'Bot の URL が設定されていないため同期できません' }); return; }
+
+    setSending(true);
+    const r = await discordPutShare(botUrl, cur.token, { ...data, createdAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
+
+    if (r.status === 'ok') {
+      const now = new Date().toISOString();
+      updateLink({ lastSyncAt: now, lastSentAt: now, lastShareHash: hash });
+      failedHashRef.current = '';
+      setSyncMsg(null);
+      // 送っている間に内容が変わっていたら、また30秒後に送る
+      if (latestRef.current.shareHash !== hash) timerRef.current = setTimeout(() => doSyncRef.current(false), DISCORD_SYNC_DELAY_MS);
+    } else if (r.status === 'unauthorized') {
+      updateLink({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined });
+      setSyncMsg({ kind: 'error', text: 'Discord 連携が解除されています。もう一度連携してください' });
+    } else if (r.status === 'outdated') {
+      failedHashRef.current = hash;
+      setSyncMsg({ kind: 'error', text: 'アプリ（または Bot）を更新してください' });
+    } else if (r.status === 'rate') {
+      const sec = r.retryAfter || DISCORD_RATE_FALLBACK_SEC;
+      waitUntilRef.current = Date.now() + sec * 1000;
+      setWaitSec(sec);
+      setSyncMsg({ kind: 'info', text: `送信が多すぎるため、${_fmtDiscordWait(sec)}後に送り直します` });
+      timerRef.current = setTimeout(() => { waitUntilRef.current = 0; setWaitSec(0); doSyncRef.current(false); }, sec * 1000);
+    } else {
+      setSyncMsg({ kind: 'error', text: r.status === 'network' ? '同期できませんでした' : `同期できませんでした（HTTP ${r.httpStatus}）` });
+    }
+  };
+  doSyncRef.current = doSync;
+
+  // 内容が変わったら、最後の変更から30秒後に送る（前回送った内容と同じなら何もしない）
+  useEffect(() => {
+    if (!ready || !link.token || !shareHash) return;
+    if (waitUntilRef.current > Date.now()) return;   // 429 の送り直しで最新の内容が送られる
+    clearTimeout(timerRef.current);
+    if (isSameAsSent(loadDiscordLink(), shareHash) || shareHash === failedHashRef.current) return;
+    timerRef.current = setTimeout(() => doSyncRef.current(false), DISCORD_SYNC_DELAY_MS);
+  }, [ready, link.token, shareHash]);
+
+  // 429 の残り秒数を数える
+  const waiting = waitSec > 0;
+  useEffect(() => {
+    if (!waiting) return;
+    const id = setInterval(() => setWaitSec(Math.max(0, Math.ceil((waitUntilRef.current - Date.now()) / 1000))), 1000);
+    return () => clearInterval(id);
+  }, [waiting]);
+
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  const syncNow = useCallback(() => { if (ready) doSyncRef.current(true); }, [ready]);
+  const clearSyncMsg = useCallback(() => { failedHashRef.current = ''; setSyncMsg(null); }, []);
+
+  return { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg };
+}
+
+/** 同期メッセージ（ヘッダー・設定タブ共通） */
+function DiscordSyncMsg({ msg, className = 'discord-link-msg', style }) {
+  if (!msg) return null;
+  const isError = msg.kind === 'error';
+  return (
+    <span className={className} style={{ color: isError ? 'var(--danger-text)' : 'var(--text-dim)', ...style }}>
+      <Icon name={isError ? 'alert-triangle' : 'clock'} size={12} color="currentColor" /> {msg.text}
+    </span>
+  );
+}
+
+/** ヘッダーの即時同期ボタン（連携中だけ出す）。メッセージは DiscordSyncMsg、最終同期は DiscordSyncTime で別に置く（ヘッダーの2段の並びに合わせるため） */
+function DiscordSyncButton({ discord, ready }) {
+  const { link, sending, waitSec, syncNow } = discord;
+  if (!link.token) return null;
+  const waiting = waitSec > 0;
+  const label = sending ? '同期中…' : waiting ? `待機中（${waitSec}秒）` : 'Discord 同期';
+  const lastSync = link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ同期していません';
+  return (
+    <button className="btn btn-yellow discord-sync-btn" onClick={syncNow} disabled={sending || waiting || !ready}
+      title={`Discord の出撃ボードへ今すぐ送ります（変更は30秒後に自動でも送られます）
+最終同期日時: ${lastSync}`}>
+      <Icon name="refresh" size={14} color="currentColor"
+        style={sending ? { animation: 'spin 1s linear infinite' } : undefined} />
+      {label}
+    </button>
+  );
+}
+
+/** ヘッダー2段目の「最終同期: …」（連携中だけ） */
+function DiscordSyncTime({ discord }) {
+  const { link } = discord;
+  if (!link.token) return null;
+  return <span className="header-sub discord-sync-time">最終同期: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ'}</span>;
+}
+
+/** 設定タブ「Discord 連携」セクション。discord は useDiscordSync の戻り値、getShareData() は現在の共有データ v1 を返す */
+function DiscordLinkSection({ discord, getShareData }) {
+  const { link, updateLink: update, syncMsg, clearSyncMsg } = discord;
+  const [code, setCode] = useState('');
+  const [botUrlDraft, setBotUrlDraft] = useState(() => loadDiscordLink().botUrl || '');
+  const [busy, setBusy] = useState('');       // '' | 'link' | 'unlink'
+  const [error, setError] = useState('');     // エラーだけ出す（成功・解除のお知らせは出さない）
 
   const linked = !!link.token;
   const botUrl = getDiscordBotUrl(link);
@@ -180,7 +354,8 @@ function DiscordLinkSection({ getShareData }) {
     const r = await discordLinkWithCode(botUrl, c);
     setBusy('');
     if (!r.ok) { setError(r.message); return; }
-    update({ token: r.token, userName: r.userName, linkedAt: new Date().toISOString(), lastSyncAt: undefined });
+    update({ token: r.token, userName: r.userName, linkedAt: new Date().toISOString(), lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined });
+    clearSyncMsg();
     setCode('');
   };
 
@@ -189,7 +364,8 @@ function DiscordLinkSection({ getShareData }) {
     setBusy('unlink'); setError('');
     const reached = botUrl ? await discordUnlink(botUrl, link.token) : false;
     setBusy('');
-    update({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined });
+    update({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined });
+    clearSyncMsg();
     if (!reached) setError('このブラウザの連携は解除しましたが、Bot に届きませんでした。確実に無効にするには Discord で /raid unlink を実行してください');
   };
 
@@ -225,6 +401,7 @@ function DiscordLinkSection({ getShareData }) {
 
       {!linked ? (
         <div>
+          {syncMsg && <div style={{ marginBottom: 8 }}><DiscordSyncMsg msg={syncMsg} style={{ marginLeft: 0 }} /></div>}
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
             Discord で <DiscordCommandChip command="/raid link" /> を実行すると届く6桁の連携コードを入力してください。進行中タスクをお友達と連携できるようになります。
           </div>
@@ -252,10 +429,11 @@ function DiscordLinkSection({ getShareData }) {
           <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 6 }}>
             最終同期日時: {link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ同期していません'}
           </span>
+          <DiscordSyncMsg msg={syncMsg} />
         </div>
       )}
 
-      {/* 開発中だけ出す枠。自動同期（#33）・同期状態（#34）ができたら枠ごと消す */}
+      {/* 開発中だけ出す枠。同期状態（#34）ができたら枠ごと消す */}
       <div className="dev-only-box">
         <div className="dev-only-box-label">開発中（今だけ表示）</div>
         <div style={rowStyle}>
