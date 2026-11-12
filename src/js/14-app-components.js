@@ -1123,7 +1123,8 @@
 
   // ================== DISCORD 出撃共有の自動送信（09-discord-link.js・§11.2）==================
   // 共有データの元（進行タスク・目標チェック・タスク完了など）が変わったら30秒後に送る。ヘッダーの即時同期ボタン・設定タブと共有
-  const raidShareData = useMemo(() => buildRaidShareData({
+  // 過去のシーズンを表示しているときは送らない（null＝自動送信・即時同期なし・Issue #57）
+  const raidShareData = useMemo(() => isPastSeasonMode(activeMode) ? null : buildRaidShareData({
     tasks: apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked,
     activeMode, gameMode, uiLang, playerLevel,
   }), [apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, gameMode, uiLang, playerLevel]);

@@ -6,13 +6,13 @@ const MANUAL_UNLOCKS_BASE_KEY = 'eft_manual_unlocks_v1';
 
 function getManualUnlocksKey() {
   const mode = getActiveMode();
-  if (mode && mode.startsWith('season_')) return `${MANUAL_UNLOCKS_BASE_KEY}__${mode}`;
+  if (isSeasonMode(mode)) return `${MANUAL_UNLOCKS_BASE_KEY}__${mode}`;
   return MANUAL_UNLOCKS_BASE_KEY; // pvp も pve も同じグローバルキー
 }
 
 function loadManualUnlocks() {
   const mode = getActiveMode();
-  if (mode && mode.startsWith('season_')) {
+  if (isSeasonMode(mode)) {
     const seasonKey = `${MANUAL_UNLOCKS_BASE_KEY}__${mode}`;
     const seasonData = localStorage.getItem(seasonKey);
     if (seasonData !== null) {
@@ -30,6 +30,6 @@ function saveManualUnlocks(entries) {
 // SeasonモードがPvP/PvEデータを継承中（まだ独自データを書いていない）かどうか
 function isManualUnlocksInherited() {
   const mode = getActiveMode();
-  if (!mode || !mode.startsWith('season_')) return false;
+  if (!isSeasonMode(mode)) return false;
   return localStorage.getItem(`${MANUAL_UNLOCKS_BASE_KEY}__${mode}`) === null;
 }

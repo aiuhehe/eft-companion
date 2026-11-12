@@ -7,7 +7,7 @@ const SEASONS_META_KEY = 'eft_seasons';
 // ネームスペース化対象のキー一覧（モードごとに独立保存）
 const NAMESPACED_KEYS = ['eft_tool_v2', 'eft_task_tabs_v1', 'eft_task_tags_v1', 'eft_journal_v1', 'eft_plan_v1'];
 
-/** 現在アクティブなモード文字列を返す（例: 'pvp', 'pve', 'season_1'） */
+/** 現在アクティブなモード文字列を返す（例: 'pvp', 'pve', 'season_current'） */
 function getActiveMode() {
   return localStorage.getItem(MODE_META_KEY) || 'pvp';
 }
@@ -17,7 +17,13 @@ function modeKey(baseKey) {
   return baseKey + '__' + getActiveMode();
 }
 
-/** シーズン一覧を返す（例: ['season_1', 'season_2']） */
+// ── シーズンの id（Issue #57） ──
+// 今のシーズンは全員同じ固定 id 'season_current'（Discord 出撃共有の mode をそろえるため）。
+// 過去のシーズン: 'season_past_YYYYMMDD'（新シーズンを始めた日・同じ日に2回目以降は '_2' '_3'…）と、
+// 移行前の番号付き 'season_N'（2つ以上シーズンを持っていた人の古いほう）。過去のシーズンは Discord に送らない。
+const CURRENT_SEASON_ID = 'season_current';
+
+/** シーズン一覧を返す（例: ['season_current', 'season_past_20270115']。先頭が今のシーズン・以降は新しい順） */
 function getSeasons() {
   try { return JSON.parse(localStorage.getItem(SEASONS_META_KEY)) || []; } catch { return []; }
 }
@@ -40,32 +46,86 @@ function initModeSystem() {
   localStorage.setItem(MODE_META_KEY, 'pvp');
 }
 
+/** eft_ で始まる `…__fromMode` のキーを全て `…__toMode` へ移す（移し先が既にあるキーは上書きせず元を残す） */
+function _moveModeKeys(fromMode, toMode) {
+  const suffix = '__' + fromMode;
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(BACKUP_KEY_PREFIX) && k.endsWith(suffix)) keys.push(k);
+  }
+  keys.forEach(k => {
+    const to = k.slice(0, -suffix.length) + '__' + toMode;
+    if (localStorage.getItem(to) !== null) return;
+    localStorage.setItem(to, localStorage.getItem(k));
+    localStorage.removeItem(k);
+  });
+}
+
+/**
+ * 番号付きシーズン（season_N）を固定 id 'season_current' へ移す（起動時に毎回呼ぶ・冪等・Issue #57）。
+ * シーズン一覧に season_current が無く season_N があるとき、いちばん大きい番号を今のシーズンとして移す。
+ * 古いバックアップを復元したときも次の起動で移る。それ以外の season_N は過去のシーズンとしてそのまま残す。
+ */
+function migrateSeasonIds() {
+  const seasons = getSeasons();
+  if (seasons.includes(CURRENT_SEASON_ID)) return;
+  const numbered = seasons.filter(s => /^season_\d+$/.test(s))
+    .sort((a, b) => Number(b.slice(7)) - Number(a.slice(7)));
+  if (numbered.length === 0) return;
+  const latest = numbered[0];
+  _moveModeKeys(latest, CURRENT_SEASON_ID);
+  saveSeasons([CURRENT_SEASON_ID, ...seasons.filter(s => s !== latest)]);
+  if (getActiveMode() === latest) localStorage.setItem(MODE_META_KEY, CURRENT_SEASON_ID);
+}
+
 /** モードを切り替えてページをリロードする */
 function switchMode(mode) {
   localStorage.setItem(MODE_META_KEY, mode);
   window.location.reload();
 }
 
-/** 新しいシーズンを追加してそのモードに切り替える */
-function addNewSeason() {
+/**
+ * 新しいシーズンを始めてそのモードに切り替える（モードバーの「+ シーズン追加」/「+ 新シーズン開始」）。
+ * まだシーズンが無ければ season_current を作るだけ。あれば今の season_current のデータを
+ * 過去のシーズン（season_past_YYYYMMDD）へ移し、空の season_current を作る。
+ */
+function startNewSeason() {
   const seasons = getSeasons();
-  const next = seasons.length + 1;
-  const id = 'season_' + next;
-  saveSeasons([...seasons, id]);
-  switchMode(id);
+  if (!seasons.includes(CURRENT_SEASON_ID)) {
+    saveSeasons([CURRENT_SEASON_ID, ...seasons]);
+    switchMode(CURRENT_SEASON_ID);
+    return;
+  }
+  if (!confirm('新しいシーズンを始めますか？\n\n今のシーズンの進捗は「過去 Season」としてこのブラウザに残り、空の Season から始まります。\n（Discord に送るのは今のシーズンだけです）')) return;
+  const d = new Date();
+  const base = `season_past_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  let pastId = base;
+  for (let n = 2; seasons.includes(pastId); n++) pastId = `${base}_${n}`;
+  _moveModeKeys(CURRENT_SEASON_ID, pastId);
+  saveSeasons([CURRENT_SEASON_ID, pastId, ...seasons.filter(s => s !== CURRENT_SEASON_ID)]);
+  switchMode(CURRENT_SEASON_ID);
 }
 
-/** シーズンモード（'season_N'）かどうか */
+/** シーズンモード（今のシーズン・過去のシーズン）かどうか。取得データは pvp-season */
 function isSeasonMode(mode) {
-  return /^season_\d+$/.test(mode);
+  return typeof mode === 'string' && mode.startsWith('season_');
+}
+
+/** 過去のシーズンかどうか（Discord に送らない） */
+function isPastSeasonMode(mode) {
+  return isSeasonMode(mode) && mode !== CURRENT_SEASON_ID;
 }
 
 /** モード id を表示ラベルに変換する */
 function getModeLabel(mode) {
   if (mode === 'pvp') return 'PvP';
   if (mode === 'pve') return 'PvE';
+  if (mode === CURRENT_SEASON_ID) return 'Season';
+  const past = mode.match(/^season_past_(\d{4})(\d{2})(\d{2})(?:_(\d+))?$/);
+  if (past) return `過去 Season（〜${past[1]}/${past[2]}/${past[3]}${past[4] ? ' #' + past[4] : ''}）`;
   const m = mode.match(/^season_(\d+)$/);
-  if (m) return 'Season ' + m[1];
+  if (m) return '過去 Season ' + m[1];
   return mode;
 }
 
