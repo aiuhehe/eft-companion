@@ -34,14 +34,104 @@
           });
         };
 
-        // 個別 objective のレンダリング
-        const renderObj = ({ obj, task }) => {
-          const key = obj.id || (task.id + obj.type + (obj.item?.id || obj.questItem?.id || ''));
-          const checked = isObjChecked(task.id, obj);
-          const pinsForObj = taskPins.filter(p => p.taskId === task.id && p.objectiveId === obj.id);
+        // ── 仲間の目標（合算した1行）を自分の目標と同じ見た目で出すための下ごしらえ（09-friend-board.js の FriendBoardView に渡す）──
+        // 合算した行の entries（誰の・どのタスクの・どの目標か）を自分の API データと突き合わせる。
+        // タスク ID・目標 ID は API の ID なので、仲間だけが進めているタスクも引ける（仲間のカスタムタスクは引けない → 簡易表示）
+        // 参加者のボタンの列（見出しのすぐ下）と、仲間の目標を出すか（自分以外の参加者を1人でも出している）
+        const fbShowsFriends = !!friendBoard.detail && friendPeople.showsFriends;
+        const fbMemberBar = <FriendMemberBar fb={friendBoard} people={friendPeople} onOpenSettings={() => setActiveTab('status')} />;
+        const fbTaskById = new Map([...(apiData.tasks || []), ...(customTasks || [])].map(t => [t.id, t]));
+        const fbActiveIds = new Set(activeTasks.map(t => t.id));
+        const fbResolve = (e) => {
+          if (e.custom && !(customTasks || []).some(t => t.id === e.taskId)) return null;
+          const task = fbTaskById.get(e.taskId);
+          const obj = task && (task.objectives || []).find(o => raidObjKey(task.id, o) === e.objId);
+          return obj ? { task, obj } : null;
+        };
+        const fbInfo = (goal, nameOf) => {
+          const resolved = (goal.entries || []).map(e => ({ e, r: fbResolve(e) }));
+          const first = resolved.find(x => x.r);
+          if (!first) return null;
+          const pairs = [];
+          const seenPair = new Set();
+          resolved.forEach(({ r }) => {
+            if (!r) return;
+            const k = r.task.id + '|' + raidObjKey(r.task.id, r.obj);
+            if (!seenPair.has(k)) { seenPair.add(k); pairs.push(r); }
+          });
+          // 行の下に並べるタスク（同じ目標を複数のタスク・人が持つと複数になる）
+          const tasks = [];
+          const byTask = new Map();
+          resolved.forEach(({ e, r }) => {
+            let t = byTask.get(e.taskId);
+            if (!t) {
+              t = { id: e.taskId, task: r?.task || null, custom: !!e.custom, name: r?.task.name || e.taskName, trader: r?.task.trader?.name || e.trader, colors: [] };
+              byTask.set(e.taskId, t);
+              tasks.push(t);
+            }
+            if (!t.colors.some(c => c.userId === e.userId)) t.colors.push({ userId: e.userId, colorIdx: e.colorIdx });
+          });
+          // チェックできるのは自分の進行タスクの目標だけ（自分の分は手元の内容で合算するので、チェックすると自分の色がすぐ消える）
+          const mine = pairs.filter(x => fbActiveIds.has(x.task.id));
+          const checked = mine.length > 0 && mine.every(x => isObjChecked(x.task.id, x.obj));
+          return {
+            key: goal.key, goal, nameOf, tasks, mine, checked,
+            rep: first.r,
+            pins: taskPins.filter(p => pairs.some(x => p.taskId === x.task.id && p.objectiveId === x.obj.id)),
+            toggle: () => setRaidObjChecked(prev => {
+              const next = { ...prev };
+              mine.forEach(({ task, obj }) => {
+                const k = raidObjKey(task.id, obj);
+                const tc = { ...(next[task.id] || {}) };
+                if (checked) delete tc[k]; else tc[k] = true;
+                next[task.id] = tc;
+              });
+              return next;
+            }),
+          };
+        };
+        const fbCheckBox = (fb, size) => fb.mine.length > 0 ? (
+          <input type="checkbox" checked={fb.checked} onChange={fb.toggle} title="自分の目標のチェック（チェックすると自分の色が消えます）"
+            style={{ width: size, height: size, accentColor: 'var(--state-ok)', flexShrink: 0, cursor: 'pointer' }} />
+        ) : (
+          <span style={{ width: size, height: size, flexShrink: 0 }} title="自分の進行タスクの目標ではありません" />
+        );
+        // 行の右端の数。ボードの人数ぶんの幅をとって、どの行でも左端（＝ピンの情報の右端）の位置をそろえる
+        const fbMarkerMinWidth = Math.min(4, friendBoard.detail?.members?.length || 1) * 40 - 8;
+        const fbMarkers = (fb, compact) => (
+          <span className={`fb-goal-members${compact ? ' is-compact' : ''}`} style={compact ? undefined : { minWidth: fbMarkerMinWidth }}>
+            {fb.goal.members.map(m => (
+              <span key={m.userId} className="fb-goal-member" title={fb.nameOf(m.userId)}>
+                <MemberMarker colorIdx={m.colorIdx} size={compact ? 8 : 10} />×{m.remaining}
+              </span>
+            ))}
+          </span>
+        );
+        const fbTaskLinkStyle = { fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left', textDecoration: 'underline', textDecorationStyle: 'dotted' };
+        const fbTaskRefs = (fb) => fb.tasks.map(t => (
+          <span key={t.id} className="fb-task-ref">
+            {fb.goal.members.length > 1 && t.colors.map(c => <MemberMarker key={c.userId} colorIdx={c.colorIdx} size={7} title={fb.nameOf(c.userId)} />)}
+            {t.task
+              ? <button onClick={() => setRaidDetailTask(t.task)} style={fbTaskLinkStyle}>{t.name}</button>
+              : <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t.name}</span>}
+            {!t.task && t.custom && (
+              <span className="fb-custom-badge" title="仲間がアプリで作ったカスタムタスク（自分のアプリに無いので詳細は開けません）">カスタム</span>
+            )}
+            {t.trader && (
+              <span style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-secondary)', padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>{t.trader}</span>
+            )}
+          </span>
+        ));
+        const fbItemIcon = (id) => (apiData.items || []).find(i => i.id === id)?.iconLink || '';
+
+        // 個別 objective のレンダリング。fb があれば仲間の目標の合算した1行（チェック・数・タスク名・ピンを合算した行のものにする）
+        const renderObjRow = ({ obj, task }, fb) => {
+          const key = fb ? fb.key : obj.id || (task.id + obj.type + (obj.item?.id || obj.questItem?.id || ''));
+          const checked = fb ? fb.checked : isObjChecked(task.id, obj);
+          const pinsForObj = fb ? fb.pins : taskPins.filter(p => p.taskId === task.id && p.objectiveId === obj.id);
           const hasPinMeta = p => p.memo || (p.requiredItems && p.requiredItems.length > 0) || (p.memoImages && p.memoImages.length > 0);
           const pinMetaBlock = pinsForObj.some(hasPinMeta) ? (
-            <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {pinsForObj.filter(hasPinMeta).map((p, pi) => (
                 <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {p.memo && (
@@ -60,12 +150,12 @@
               ))}
             </div>
           ) : null;
-          // マップピン登録済みバッジ（マップ名ごとにグループ化）
+          // マップピン登録済みバッジ（マップ名ごとにグループ化）。押すとマップタブでそのピンを開く（移動・メモの編集・追加もマップタブで）
           const pinBadge = pinsForObj.length > 0 ? (() => {
             const byMap = {};
             pinsForObj.forEach(p => { (byMap[p.mapName] = byMap[p.mapName] || []).push(p); });
             return (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                 {Object.entries(byMap).map(([mapName, pins]) => (
                   <button key={mapName}
                     onClick={() => {
@@ -73,20 +163,25 @@
                       setMapsSelectedMap(mapName);
                       setMapsHighlightedPinId(pins[0].id);
                     }}
+                    title="マップタブでこのピンを開く（ピンの移動・メモの編集・追加もマップタブでできます）"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10,
                       padding: '1px 7px', borderRadius: 10, cursor: 'pointer',
                       background: 'var(--state-pin-bg-weak)', color: 'var(--state-pin)',
                       border: '1px solid var(--state-pin-border)' }}>
                     <Icon name="map-pin" size={9} color="var(--state-pin)" />
-                    {mapName}{pins.length > 1 ? ` ×${pins.length}` : ''}
+                    {mapName} のピンを見る{pins.length > 1 ? `（${pins.length}個）` : ''}
                   </button>
                 ))}
               </div>
             );
           })() : null;
+          // ピンの情報（メモ・必要な鍵・メモ画像・ピンを見るボタン）は行の右の空いているところに置く（縦に伸ばさない）。
+          // 幅が足りなければ折り返して下に回る（.obj-pin-side）
+          const pinSide = (pinMetaBlock || pinBadge) ? <div className="obj-pin-side">{pinMetaBlock}{pinBadge}</div> : null;
 
-          const chipStyle = { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', opacity: checked ? 0.4 : 1, transition: 'opacity 0.15s' };
-          const chkBox = (
+          // 仲間の目標では薄くしない（自分がチェックしても仲間の分が残っている）
+          const chipStyle = { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, padding: '6px 10px', opacity: checked && !fb ? 0.4 : 1, transition: 'opacity 0.15s' };
+          const chkBox = fb ? fbCheckBox(fb, 15) : (
             <input type="checkbox" checked={checked} onChange={() => toggleObjCheck(task.id, obj)}
               style={{ width: 15, height: 15, accentColor: 'var(--state-ok)', flexShrink: 0, cursor: 'pointer' }} />
           );
@@ -101,12 +196,13 @@
               {task.name}
             </button>
           );
+          const taskLine = fb ? fbTaskRefs(fb) : <>{taskLabel}{traderBadge}</>;
 
           if (obj.type === 'findItem' || obj.type === 'giveItem' || obj.type === 'plantItem') {
             const catName = obj.itemCategory?.name;
             const displayName = obj.item?.name || (catName ? `${catJa(catName)} カテゴリ` : obj.description);
             return (
-              <div key={key} className="delivery-chip" style={chipStyle}>
+              <div key={key} className={`delivery-chip${fb && fb.goal.common ? ' is-fb-common' : ''}`} style={chipStyle}>
                 {chkBox}
                 {(obj.item?.iconLink || obj.questItem?.iconLink) ? (
                   <img src={obj.item?.iconLink || obj.questItem?.iconLink} alt="" style={{ width: 28, height: 28, objectFit: 'contain', background: 'var(--bg-secondary)', borderRadius: 3, flexShrink: 0 }}
@@ -114,19 +210,19 @@
                 ) : catName ? (
                   <Icon name="package" size={22} color="var(--text-dim)" />
                 ) : null}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="obj-main">
                   <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--text-primary)' }}>{displayName}</div>
                   {obj.description && (obj.item?.name || catName) && (
                     <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{obj.description}</div>
                   )}
-                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLabel}{traderBadge}</div>
-                  {pinBadge}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLine}</div>
                 </div>
+                {pinSide}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                   {obj.foundInRaid && (
                     <span style={{ fontSize: 10, color: 'var(--warn-text)', background: 'var(--warn-bg)', border: '1px solid var(--warn)', padding: '1px 5px', borderRadius: 3 }}>FIR</span>
                   )}
-                  <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)' }}>×{obj.count}</span>
+                  {fb ? fbMarkers(fb) : <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)' }}>×{obj.count}</span>}
                 </div>
               </div>
             );
@@ -134,36 +230,37 @@
 
           if (obj.type === 'findQuestItem') {
             return (
-              <div key={key} className="delivery-chip" style={chipStyle}>
+              <div key={key} className={`delivery-chip${fb && fb.goal.common ? ' is-fb-common' : ''}`} style={chipStyle}>
                 {chkBox}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="obj-main">
                   <div style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--text-primary)' }}>{obj.questItem?.name || obj.description}</div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLabel}{traderBadge}</div>
-                  {pinBadge}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLine}</div>
                 </div>
+                {pinSide}
                 <span style={{ fontSize: 10, color: 'var(--info)', background: 'var(--info-bg)', padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>クエストアイテム</span>
-                <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)', flexShrink: 0 }}>×{obj.count}</span>
+                {fb ? fbMarkers(fb) : <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)', flexShrink: 0 }}>×{obj.count}</span>}
               </div>
             );
           }
 
           if (obj.type === 'mark') {
             return (
-              <div key={key} className="delivery-chip" style={chipStyle}>
+              <div key={key} className={`delivery-chip${fb && fb.goal.common ? ' is-fb-common' : ''}`} style={chipStyle}>
                 {chkBox}
                 {obj.markerItem?.iconLink && (
                   <img src={obj.markerItem.iconLink} alt="" style={{ width: 28, height: 28, objectFit: 'contain', background: 'var(--bg-secondary)', borderRadius: 3, flexShrink: 0 }}
                     onError={e => { e.target.style.display = 'none'; }} />
                 )}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="obj-main">
                   <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{obj.description}</div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLabel}{traderBadge}</div>
-                  {pinMetaBlock}
-                  {pinBadge}
+                  {/* マーカー名は右端に置くとピンの情報の位置がずれるので本文に。説明文に名前が入っていれば出さない */}
+                  {obj.markerItem?.name && !(obj.description || '').includes(obj.markerItem.name) && (
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{obj.markerItem.name}</div>
+                  )}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLine}</div>
                 </div>
-                {obj.markerItem?.name && (
-                  <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>{obj.markerItem.name}</span>
-                )}
+                {pinSide}
+                {fb && fbMarkers(fb)}
               </div>
             );
           }
@@ -173,54 +270,56 @@
             const dist = obj.distance ? `${obj.distance.compareMethod}${obj.distance.value}m` : '';
             const killDetail = [obj.target, `×${obj.count}`, parts ? `(${parts})` : '', dist].filter(Boolean).join(' ');
             return (
-              <div key={key} className="delivery-chip" style={chipStyle}>
+              <div key={key} className={`delivery-chip${fb && fb.goal.common ? ' is-fb-common' : ''}`} style={chipStyle}>
                 {chkBox}
                 <Icon name="skull" size={20} color="var(--danger)" />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="obj-main">
                   <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
                     {obj.description || killDetail}
                   </div>
                   {obj.description && killDetail && (
                     <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 1 }}>{killDetail}</div>
                   )}
-                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLabel}{traderBadge}</div>
-                  {pinMetaBlock}
-                  {pinBadge}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLine}</div>
                 </div>
+                {pinSide}
+                {fb && fbMarkers(fb)}
               </div>
             );
           }
 
           if (obj.type === 'extract') {
             return (
-              <div key={key} className="delivery-chip" style={chipStyle}>
+              <div key={key} className={`delivery-chip${fb && fb.goal.common ? ' is-fb-common' : ''}`} style={chipStyle}>
                 {chkBox}
                 <Icon name="arrow-right" size={16} color="var(--state-ok)" />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="obj-main">
                   <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{obj.description}</div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLabel}{traderBadge}</div>
-                  {pinBadge}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLine}</div>
                 </div>
+                {pinSide}
+                {fb && fbMarkers(fb)}
               </div>
             );
           }
 
           if (obj.type === 'locate' || obj.type === 'visit') {
             return (
-              <div key={key} className="delivery-chip" style={chipStyle}>
+              <div key={key} className={`delivery-chip${fb && fb.goal.common ? ' is-fb-common' : ''}`} style={chipStyle}>
                 {chkBox}
                 <Icon name="search" size={18} color="var(--info)" />
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="obj-main">
                   <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{obj.description || obj.target || '調査'}</div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLabel}{traderBadge}</div>
-                  {pinMetaBlock}
-                  {pinBadge}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLine}</div>
                 </div>
+                {pinSide}
+                {fb && fbMarkers(fb)}
               </div>
             );
           }
           return null;
         };
+        const renderObj = (x) => renderObjRow(x, null);
 
         const renderSection = (label, iconName, color, items) => {
           if (!items || items.length === 0) return null;
@@ -237,57 +336,51 @@
           );
         };
 
-        // 収集セクション専用レンダラー（表示モード対応）
-        const renderCollectSection = (label, items) => {
+        // 収集の一覧（表示モード対応）。items は [{ obj, task, fb? }]（fb は仲間の目標の合算した1行）。非表示なら null
+        const renderCollectItems = (items) => {
           if (!items || items.length === 0) return null;
           if (collectViewMode === 'hidden') return null;
-          const sectionHeader = (
-            <div className="section-title">
-              <Icon name="package" size={14} color="var(--warn)" /> {label}
-              <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 6 }}>{items.length}件</span>
-            </div>
-          );
           const cols = collectViewMode === '2col' ? 2 : collectViewMode === '3col' ? 3 : null;
           if (cols) {
             return (
-              <div className="section" key={label}>
-                {sectionHeader}
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 3 }}>
-                  {items.map(({ obj, task }) => {
+                  {items.map(({ obj, task, fb }) => {
                     const catName = obj.itemCategory?.name;
                     const dispName = obj.item?.name || obj.questItem?.name || (catName ? `${catJa(catName)} カテゴリ` : obj.description || '');
-                    const k = obj.id || (task.id + obj.type + (obj.item?.id || obj.questItem?.id || ''));
-                    const checked = isObjChecked(task.id, obj);
+                    const k = fb ? fb.key : obj.id || (task.id + obj.type + (obj.item?.id || obj.questItem?.id || ''));
+                    const checked = fb ? fb.checked : isObjChecked(task.id, obj);
+                    const faded = checked && !fb;
+                    const canCheck = !fb || fb.mine.length > 0;
                     const iconLink = obj.item?.iconLink || obj.questItem?.iconLink;
                     return (
-                      <div key={k} onClick={() => toggleObjCheck(task.id, obj)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 6px', background: 'var(--bg-secondary)', borderRadius: 4, fontSize: 11, minWidth: 0, opacity: checked ? 0.4 : 1, cursor: 'pointer', transition: 'opacity 0.15s', outline: checked ? '1px solid var(--state-ok)' : 'none' }}>
+                      <div key={k} onClick={canCheck ? (fb ? fb.toggle : () => toggleObjCheck(task.id, obj)) : undefined}
+                        title={fb ? fb.tasks.map(t => t.name).join(' / ') : undefined}
+                        style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 6px', background: 'var(--bg-secondary)', borderRadius: 4, fontSize: 11, minWidth: 0, opacity: faded ? 0.4 : 1, cursor: canCheck ? 'pointer' : 'default', transition: 'opacity 0.15s', outline: checked ? '1px solid var(--state-ok)' : 'none', boxShadow: fb && fb.goal.common ? 'inset 3px 0 0 var(--accent)' : undefined }}>
                         {iconLink ? (
                           <img src={iconLink} alt="" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} onError={e => { e.target.style.display = 'none'; }} />
                         ) : catName ? <Icon name="package" size={13} color="var(--text-dim)" /> : null}
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>{dispName}</span>
-                        <span style={{ fontWeight: 'bold', color: 'var(--accent)', flexShrink: 0 }}>×{obj.count || 1}</span>
+                        {fb ? fbMarkers(fb, true) : <span style={{ fontWeight: 'bold', color: 'var(--accent)', flexShrink: 0 }}>×{obj.count || 1}</span>}
                       </div>
                     );
                   })}
                 </div>
-              </div>
             );
           }
           // normal: 1行コンパクト
           return (
-            <div className="section" key={label}>
-              {sectionHeader}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {items.map(({ obj, task }) => {
+                {items.map(({ obj, task, fb }) => {
                   const catName = obj.itemCategory?.name;
                   const dispName = obj.item?.name || obj.questItem?.name || (catName ? `${catJa(catName)} カテゴリ` : obj.description || '');
-                  const k = obj.id || (task.id + obj.type + (obj.item?.id || obj.questItem?.id || ''));
-                  const checked = isObjChecked(task.id, obj);
+                  const k = fb ? fb.key : obj.id || (task.id + obj.type + (obj.item?.id || obj.questItem?.id || ''));
+                  const checked = fb ? fb.checked : isObjChecked(task.id, obj);
                   return (
-                    <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px', background: 'var(--bg-secondary)', borderRadius: 4, fontSize: 12, minWidth: 0, opacity: checked ? 0.4 : 1, transition: 'opacity 0.15s' }}>
-                      <input type="checkbox" checked={checked} onChange={() => toggleObjCheck(task.id, obj)}
-                        style={{ width: 13, height: 13, accentColor: 'var(--state-ok)', flexShrink: 0, cursor: 'pointer' }} />
+                    <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px', background: 'var(--bg-secondary)', borderRadius: 4, fontSize: 12, minWidth: 0, opacity: checked && !fb ? 0.4 : 1, transition: 'opacity 0.15s', flexWrap: fb ? 'wrap' : undefined, boxShadow: fb && fb.goal.common ? 'inset 3px 0 0 var(--accent)' : undefined }}>
+                      {fb ? fbCheckBox(fb, 13) : (
+                        <input type="checkbox" checked={checked} onChange={() => toggleObjCheck(task.id, obj)}
+                          style={{ width: 13, height: 13, accentColor: 'var(--state-ok)', flexShrink: 0, cursor: 'pointer' }} />
+                      )}
                       {(obj.item?.iconLink || obj.questItem?.iconLink) ? (
                         <img src={obj.item?.iconLink || obj.questItem?.iconLink} alt="" style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0 }} onError={e => { e.target.style.display = 'none'; }} />
                       ) : catName ? <Icon name="package" size={16} color="var(--text-dim)" /> : null}
@@ -296,16 +389,64 @@
                       {obj.foundInRaid && (
                         <span style={{ fontSize: 10, color: 'var(--warn-text)', background: 'var(--warn-bg)', border: '1px solid var(--warn)', padding: '0 3px', borderRadius: 3, flexShrink: 0 }}>FIR</span>
                       )}
+                      {fb ? <>{fbMarkers(fb, true)}{fbTaskRefs(fb)}</> : <>
                       <span style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--accent)', flexShrink: 0 }}>×{obj.count || 1}</span>
                       <button onClick={() => setRaidDetailTask(task)}
                         style={{ color: 'var(--accent)', fontSize: 10, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted' }}>{task.name}</button>
                       {task.trader?.name && <span style={{ fontSize: 10, color: 'var(--text-dim)', background: 'var(--bg-primary)', padding: '0 3px', borderRadius: 2, flexShrink: 0 }}>{task.trader.name}</span>}
+                      </>}
                     </div>
                   );
                 })}
               </div>
+          );
+        };
+        // 収集セクション（自分の目標）
+        const renderCollectSection = (label, items) => {
+          const body = renderCollectItems(items);
+          if (!body) return null;
+          return (
+            <div className="section" key={label}>
+              <div className="section-title">
+                <Icon name="package" size={14} color="var(--warn)" /> {label}
+                <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 6 }}>{items.length}件</span>
+              </div>
+              {body}
             </div>
           );
+        };
+        // 収集一覧の表示切替（自分の目標・仲間の目標で共通）
+        const collectToggle = (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)', marginRight: 2 }}>収集一覧:</span>
+            {[{ k: 'normal', l: '1列' }, { k: '2col', l: '2列' }, { k: '3col', l: '3列' }, { k: 'hidden', l: '非表示' }].map(m => (
+              <button key={m.k}
+                className={`btn btn-sm ${collectViewMode === m.k ? 'btn-yellow' : 'btn-gray'}`}
+                style={{ padding: '1px 7px', fontSize: 10 }}
+                onClick={() => setCollectViewMode(m.k)}>{m.l}</button>
+            ))}
+          </div>
+        );
+        // 仲間の目標の行の描き方（FriendBoardView の render）
+        const fbRender = {
+          row: (goal, nameOf) => {
+            const fb = fbInfo(goal, nameOf);
+            return fb ? renderObjRow({ obj: fb.rep.obj, task: fb.rep.task }, fb)
+              : <FriendGoalRow key={goal.key} goal={goal} nameOf={nameOf} iconOf={fbItemIcon} />;
+          },
+          collectList: (goals, nameOf) => {
+            const list = [];
+            const rest = [];
+            goals.forEach(g => {
+              const fb = fbInfo(g, nameOf);
+              if (fb) list.push({ obj: fb.rep.obj, task: fb.rep.task, fb }); else rest.push(g);
+            });
+            const body = renderCollectItems(list);
+            const restRows = collectViewMode === 'hidden' ? [] : rest.map(g => <FriendGoalRow key={g.key} goal={g} nameOf={nameOf} iconOf={fbItemIcon} />);
+            if (!body && restRows.length === 0) return null;
+            return <div key="collect-list" className="fb-collect-list">{body}{restRows}</div>;
+          },
+          collectToggle,
         };
 
         return (
@@ -1231,8 +1372,55 @@
               )}
             </div>
 
+            {/* ─── 仲間の目標（Discord 出撃共有・09-friend-board.js・Issue #35）: 参加者のボタン（押すとその人を出す／外す・複数選べる）。
+                 マップを選んでいれば「{マップ} での目標」の見出しのすぐ下、選んでいなければ（見出しが無いので）ここに出す ─── */}
+            {(!raidMap || (!fbShowsFriends && activeTasks.length === 0)) && fbMemberBar}
+
             {/* ─── 目標一覧 ─── */}
-            {!raidMap ? (
+            {fbShowsFriends ? (
+              // 自分以外の参加者を1人でも出していれば、出している参加者（自分を含む）の目標を合算してメンバー別の色で出す（Discord のボードと同じ並び・§7・§8）
+              <>
+                {raidMap && (
+                  <>
+                    <div style={{ padding: '6px 0 4px', fontSize: 13, color: 'var(--text-secondary)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Icon name="map-pin" size={14} color="var(--accent)" />
+                      <span style={{ color: 'var(--accent)' }}>{raidMap}</span> での目標
+                      <button className="btn btn-sm btn-gray" style={{ marginLeft: 'auto' }} onClick={() => setRaidMap('')}>マップ別の一覧に戻る</button>
+                    </div>
+                    {fbMemberBar}
+                    {(() => {
+                      // 自分の進行タスク ＋ 仲間が共有しているタスクのピン（誰かに残っている目標だけ）。ピンが無くても地図は出す。
+                      // 右の一覧のタスク名の横に、その目標が残っている人の色の四角を出す（数は出さない）
+                      const objKeyOf = (task, obj) => raidObjKey(task.id, obj);
+                      const marksOf = (task, obj) => friendPeople.holdersOf(task.id, objKeyOf(task, obj));
+                      const friendTasks = [...friendPeople.taskIds].filter(id => !fbActiveIds.has(id)).map(id => fbTaskById.get(id)).filter(Boolean);
+                      const mapTasks = [...activeTasks, ...friendTasks];
+                      const mapTaskById = new Map(mapTasks.map(t => [t.id, t]));
+                      const pinsHere = taskPins.filter(p => {
+                        if (p.mapName !== raidMap) return false;
+                        // 自分の進行タスクのピンは、自分を外していなければ出す
+                        if (fbActiveIds.has(p.taskId) && !friendBoard.hiddenMembers.has(friendPeople.selfId)) return true;
+                        const t = mapTaskById.get(p.taskId);
+                        const o = t && (t.objectives || []).find(x => x.id === p.objectiveId);
+                        return !!o && marksOf(t, o).length > 0;
+                      });
+                      return (
+                        <MapPinVisual mapName={raidMap} mapImages={mapImages} ensureMapImageRegistered={ensureMapImageRegistered}
+                          pins={pinsHere}
+                          allTasks={mapTasks}
+                          onToggleCheck={toggleObjCheck}
+                          isChecked={isObjChecked}
+                          onOpenTask={setRaidDetailTask}
+                          memberMarksOf={marksOf} memberNameOf={friendPeople.nameOf}
+                          showWhenEmpty />
+                      );
+                    })()}
+                  </>
+                )}
+                <FriendBoardView detail={friendBoard.detail} map={raidMap} onSelectMap={setRaidMap} items={apiData.items}
+                  people={friendPeople} render={fbRender} />
+              </>
+            ) : !raidMap ? (
               <div className="section" style={{ textAlign: 'center', padding: '24px 16px' }}>
                 <Icon name="map" size={28} color="var(--text-dim)" />
                 <div style={{ marginTop: 8, color: 'var(--text-dim)', fontSize: 13 }}>マップを選択すると、このマップでの目標が表示されます</div>
@@ -1247,6 +1435,7 @@
                   <Icon name="map-pin" size={14} color="var(--accent)" />
                   <span style={{ color: 'var(--accent)' }}>{raidMap}</span> での目標
                 </div>
+                {fbMemberBar}
 
                 {/* ─── マップ可視化（ピン） ─── */}
                 <MapPinVisual mapName={raidMap} mapImages={mapImages} ensureMapImageRegistered={ensureMapImageRegistered}
@@ -1257,17 +1446,7 @@
                   onOpenTask={setRaidDetailTask} />
 
                 {/* 収集セクション表示切替 */}
-                {(grpSpec.collect.length + grpAny.collect.length > 0) && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-dim)', marginRight: 2 }}>収集一覧:</span>
-                    {[{ k: 'normal', l: '1列' }, { k: '2col', l: '2列' }, { k: '3col', l: '3列' }, { k: 'hidden', l: '非表示' }].map(m => (
-                      <button key={m.k}
-                        className={`btn btn-sm ${collectViewMode === m.k ? 'btn-yellow' : 'btn-gray'}`}
-                        style={{ padding: '1px 7px', fontSize: 10 }}
-                        onClick={() => setCollectViewMode(m.k)}>{m.l}</button>
-                    ))}
-                  </div>
-                )}
+                {(grpSpec.collect.length + grpAny.collect.length > 0) && collectToggle}
 
                 {renderSection('持ち込むもの', 'backpack', 'var(--info)', grpSpec.bring)}
                 {renderCollectSection('収集するもの（FIR）', grpSpec.collect)}

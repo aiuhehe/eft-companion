@@ -787,7 +787,14 @@ const VALID_TAB_IDS = new Set(['status', ...TAB_DEFS.map(t => t.id)]);
 function getTabFromHash() {
   let id = '';
   try { id = decodeURIComponent((window.location.hash || '').replace(/^#/, '')); } catch { id = ''; }
+  // Discord のボードの [地図で見る]（#board=<id>）は出撃準備タブで仲間の目標を開く（docs/Discord出撃共有Bot設計書.md §11.4）
+  if (getBoardIdFromHash()) return 'raid';
   return VALID_TAB_IDS.has(id) ? id : 'status';
+}
+// #board=<ボード ID（UUID）> のボード ID。無い・形が違うときは ''
+function getBoardIdFromHash() {
+  const m = /^#board=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(window.location.hash || '');
+  return m ? m[1].toLowerCase() : '';
 }
 // 履歴を積まずにハッシュだけ書き換える（「戻る」でタブ間を行き来させない）
 function writeTabHash(id) {

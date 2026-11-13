@@ -762,7 +762,10 @@
     );
   };
 
-  const MapPinVisual = ({ mapName, mapImages, ensureMapImageRegistered, pins, allTasks, onToggleCheck, isChecked, onOpenTask }) => {
+  // showWhenEmpty: ピンが無くても地図画像だけ出す（仲間の目標・Issue #35）
+  // memberMarksOf(task, obj): 仲間の目標を出しているとき、その目標が残っている参加者 [{ userId, colorIdx }]（右の一覧の番号の下に色の四角だけ縦に出す。数は出さない）
+  // memberNameOf(userId): 四角に乗せたときの名前
+  const MapPinVisual = ({ mapName, mapImages, ensureMapImageRegistered, pins, allTasks, onToggleCheck, isChecked, onOpenTask, showWhenEmpty = false, memberMarksOf, memberNameOf }) => {
     const meta = mapImages[mapName];
     const containerRef = React.useRef(null);
     const imgRef       = React.useRef(null);
@@ -938,7 +941,7 @@
         </div>
       );
     }
-    if (sortedPins.length === 0) return null;
+    if (sortedPins.length === 0 && !showWhenEmpty) return null;
 
     return (
       <div ref={containerRef} className="section"
@@ -1035,7 +1038,8 @@
                     opacity: checked ? 0.5 : 1,
                     alignItems: 'flex-start',
                   }}>
-                  {/* 番号バッジ（チェック済みはチェックアイコンに変化） */}
+                  {/* 番号バッジ（チェック済みはチェックアイコンに変化）。仲間の目標を出しているときは、その下にその目標が残っている人の色の四角を縦に並べる */}
+                  <div className="map-pin-badge-col">
                   <div style={{
                     width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                     background: col, color: '#000',
@@ -1044,6 +1048,15 @@
                     marginTop: 1, boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
                   }}>
                     {checked ? <Icon name="check" size={12} color="#000" /> : idx + 1}
+                  </div>
+                  {(() => {
+                    const marks = memberMarksOf ? memberMarksOf(task, obj) : [];
+                    return marks.length > 0 && (
+                      <span className="map-pin-members">
+                        {marks.map(m => <MemberMarker key={m.userId} colorIdx={m.colorIdx} size={8} title={memberNameOf ? memberNameOf(m.userId) : ''} />)}
+                      </span>
+                    );
+                  })()}
                   </div>
                   {/* テキスト */}
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -1128,5 +1141,13 @@
     activeMode, gameMode, uiLang, playerLevel,
   }), [apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, gameMode, uiLang, playerLevel]);
   const discordSync = useDiscordSync(raidShareData, apiData.tasks.length > 0);
+  // 仲間の目標（09-friend-board.js・§11.4）。出撃準備タブを表示している間だけ30秒ごとに読み直す。
+  // 参加中のボードを自動で開く。開いたボードを最初に読めたとき、Discord のボードでマップが選ばれていれば、
+  // [地図で見る] のリンクで開いたときか、まだマップを選んでいないときだけそのマップを選ぶ（自分で選んだマップは上書きしない）
+  const friendBoard = useFriendBoard(discordSync, activeTab === 'raid', (board, source) => {
+    if (board.selectedMap && RAID_MAPS.includes(board.selectedMap) && (source === 'hash' || !raidMap)) setRaidMap(board.selectedMap);
+  });
+  // ボードの参加者（参加者のボタンで外した人を除き、自分の分は手元の共有データに差し替え）。目標一覧（FriendBoardView）と地図の右の一覧（色の四角）で使う
+  const friendPeople = useFriendBoardPeople(friendBoard.detail, raidShareData, discordSync.link.userName, friendBoard.hiddenMembers);
 
   // ================== RENDER ==================

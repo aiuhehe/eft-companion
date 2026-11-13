@@ -32,15 +32,17 @@
 | `05-icons.js` | IP(SVGパス) + Icon コンポーネント (JSX) | ~75 |
 | `06-themes.js` | THEMES + applyTheme | ~16 |
 | `07-charts.js` | FleaHistoryChart, MultiLineFleaChart (JSX) | ~295 |
-| `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`） | ~135 |
+| `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`・`#board=<id>` は `getBoardIdFromHash` で出撃準備タブ） | ~145 |
+| `09-friend-board.js` | Discord 出撃共有の仲間の目標（出撃準備タブの参加者のボタンで出す人を選ぶ `FriendMemberBar`）: `GET /api/boards`・`GET /api/boards/:id`・30秒ごとの読み直しフック `useFriendBoard`・出撃準備タブの `FriendMemberBar` / `FriendBoardView`・参加者フック `useFriendBoardPeople`（自分の分は手元の共有データに差し替え・自分を探す `findSelfMember`・目標ごとに残っている人 `holdersOf`＝地図の右の一覧の色の四角にも使う）（行は出撃準備タブの `renderObjRow` で描く）(JSX) | ~500 |
 | `09-manual-unlocks.js` | 手動登録したタスク↔アイテム紐づけの読み書き | ~35 |
 | `09-discord-link.js` | Discord 出撃共有の連携: Bot の URL 定数 `DISCORD_BOT_URL`（ビルド時に環境変数で置換）・`POST/DELETE /api/link`・`PUT /api/share`・自動同期フック `useDiscordSync`（30秒まとめ送信・同じ内容なら送らない）・ヘッダーの即時同期ボタン `DiscordSyncButton`・設定タブの `DiscordLinkSection` (JSX) | ~460 |
 | `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData` | ~100 |
+| `09-raid-aggregate.js` | Discord 出撃共有の合算（仲間の目標）`aggregateRaidMap` / `aggregateRaidOverview`（Bot の `aggregate.ts` と同じルール。行はまとめる前の目標 `entries` も持つ） | ~185 |
 | `10-app-state.js` | `function App() {` + 全useState/useRef + 初期effect | ~740 |
 | `11-app-effects.js` | ジャーナル/タスクタブ state + 永続化effect | ~175 |
 | `12-app-callbacks.js` | ammo memo + plan/journal/wipe callbacks + API読込 | ~500 |
 | `13-app-memos.js` | traderAnalytics, hideoutCalc, filteredTasks 等の全useMemo | ~1200 |
-| `14-app-components.js` | StashControl, Tooltip, BarterCard, CraftCard, MapPinVisual 等 (JSX)・末尾で共有データ `raidShareData` と `useDiscordSync` を呼ぶ | ~1130 |
+| `14-app-components.js` | StashControl, Tooltip, BarterCard, CraftCard, MapPinVisual 等 (JSX)・末尾で共有データ `raidShareData` と `useDiscordSync`・仲間の目標 `useFriendBoard` / `useFriendBoardPeople` を呼ぶ | ~1140 |
 | `15-render-open.js` | return文の開始 + ヘッダー + タブバー | ~80 |
 | `20-tab-status.js` | 設定タブ | ~230 |
 | `21-tab-advisor.js` | トレーダー解放タブ | ~140 |
@@ -57,7 +59,7 @@
 | `32-tab-wipeflow.js` | プランタブ（id は `wipeflow` のまま） | ~360 |
 | `33-tab-armor.js` | アーマープレート一覧タブ | ~135 |
 | `33-tab-presets.js` | 武器プリセット比較タブ | ~900 |
-| `33-tab-raid.js` | 出撃準備タブ | ~1380 |
+| `33-tab-raid.js` | 出撃準備タブ（目標の行 `renderObjRow` は仲間の目標の合算した行にも使う） | ~1500 |
 | `34-tab-maps.js` | マップタブ（ピン登録・画像差し替え） | ~1060 |
 | `90-render-close.js` | return文のクロージング | ~12 |
 | `99-mount.js` | ReactDOM.createRoot + render | ~4 |
@@ -87,7 +89,7 @@
 | 鍵一覧 | `docs/鍵一覧機能仕様書.md` |
 | 在庫（スクリーンショット登録・OCR） | `docs/在庫機能仕様書.md` |
 | マップ | `docs/マップ機能仕様書.md` |
-| Discord 出撃共有（**アプリ側の動きだけ**：連携 UI・自動送信・Bot の URL の持ち方・保存キー・仲間のボードの画面・ピンの同期。全体設計・共有データ形式・API・ボード表示・合算・Bot の内部設計の正本は aiuhehe/tarkov-raid-bot の `docs/設計書.md`。Bot だけの変更ではこちらを直さない） | `docs/Discord出撃共有Bot設計書.md` |
+| Discord 出撃共有（**アプリ側の動きだけ**：連携 UI・自動送信・Bot の URL の持ち方・保存キー・仲間の目標の画面・ピンの同期。全体設計・共有データ形式・API・ボード表示・合算・Bot の内部設計の正本は aiuhehe/tarkov-raid-bot の `docs/設計書.md`。Bot だけの変更ではこちらを直さない） | `docs/Discord出撃共有Bot設計書.md` |
 | （GitHub Actions）Discord 通知 | `docs/Discord通知仕様書.md` |
 
 > **JSXソース分割について（2026-07-03）**
@@ -173,7 +175,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Seasonは `eft_manual_unlocks_v1__season_N` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
 | `eft_maps_v1` | マップ画像メタデータ（`{ [mapName]: { file, width, height } }`）— 自動取得・グローバル |
 | `eft_task_pins_v1` | タスク目標のピン座標配列（`[{ id, mapName, taskId, objectiveId, x, y, memo?, requiredItems?, memoImages? }]`）— グローバル。`memoImages` は詳細位置画像 `[{ id, name(省略名), dataUrl(JPEG) }]` |
-| `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, lastSentAt, lastShareHash, botUrl? }`（連携中＝同期する。オン/オフ設定は持たない。`lastShareHash`/`lastSentAt` は前回送った内容のハッシュと送信時刻＝同じ内容なら送らない判定用） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
+| `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, lastSentAt, lastShareHash, hiddenMembers?, botUrl? }`（`hiddenMembers` = 出撃準備タブの参加者のボタンで外した人の userId 配列。旧 `hideFriends` は読み込み時に消す）（連携中＝同期する。オン/オフ設定は持たない。`lastShareHash`/`lastSentAt` は前回送った内容のハッシュと送信時刻＝同じ内容なら送らない判定用） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
 | `eft_custom_items_v1` | 登録タスク品（API に無いクエストアイテム等）`[{ id:'citem_…', name, shortName, iconLink(128px PNG dataURL) }]` — グローバル。ピンの `requiredItems` から id 参照 |
 
 #### モードごとに独立するキー（`__${mode}` サフィックス付き）
