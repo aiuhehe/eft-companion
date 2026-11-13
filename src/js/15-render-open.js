@@ -46,14 +46,16 @@
         {['pvp', 'pve', ...seasons].map(mode => (
           <button
             key={mode}
-            className={`mode-btn${activeMode === mode ? ' active' : ''}`}
+            className={`mode-btn${isPastSeasonMode(mode) ? ' mode-btn-past' : ''}${activeMode === mode ? ' active' : ''}`}
+            title={isPastSeasonMode(mode) ? '過去のシーズン（Discord には送りません）' : undefined}
             onClick={() => { if (activeMode !== mode) switchMode(mode); }}>
             {getModeLabel(mode)}
           </button>
         ))}
-        <button className="mode-btn mode-btn-add" onClick={addNewSeason}
-          title="新しいシーズンを追加">
-          + シーズン追加
+        {/* 今のシーズンは固定 id season_current（Issue #57）。2回目以降は今のシーズンを過去のシーズンへ移して空の Season を作る */}
+        <button className="mode-btn mode-btn-add" onClick={startNewSeason}
+          title={seasons.includes(CURRENT_SEASON_ID) ? '新しいシーズンを始める（今のシーズンは過去のシーズンとして残ります）' : 'シーズンを追加'}>
+          {seasons.includes(CURRENT_SEASON_ID) ? '+ 新シーズン開始' : '+ シーズン追加'}
         </button>
       </div>
 

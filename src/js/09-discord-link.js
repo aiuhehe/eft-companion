@@ -173,8 +173,9 @@ const raidShareHash = (data) => _discordHash(JSON.stringify({ ...data, createdAt
 
 /**
  * Discord 連携の状態と自動送信（App の中で1回だけ呼ぶ）。
- * shareData: 現在の共有データ v1（useMemo 済み）／ ready: API のタスクを読み込み済みか（読む前の空の内容は送らない）
- * 戻り値: { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg }
+ * shareData: 現在の共有データ v1（useMemo 済み・過去のシーズンでは null＝送らない）／ ready: API のタスクを読み込み済みか（読む前の空の内容は送らない）
+ * 戻り値: { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg, shareable }
+ *  - shareable: 送れる内容があるか（過去のシーズンでは false。即時同期ボタンを押せなくする）
  *  - sending: 同期中（即時同期ボタンを押したときは、送らなかったときも最低 DISCORD_SYNC_MIN_SPIN_MS は true）
  *  - syncMsg: { kind: 'error' | 'info', text } 同期状態の欄に出すメッセージ（次に成功したら消す）
  */
@@ -295,7 +296,7 @@ function useDiscordSync(shareData, ready) {
   const syncNow = useCallback(() => { if (ready) doSyncRef.current(true); }, [ready]);
   const clearSyncMsg = useCallback(() => { failedHashRef.current = ''; setSyncMsg(null); }, []);
 
-  return { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg };
+  return { link, updateLink, sending, waitSec, syncMsg, syncNow, clearSyncMsg, shareable: !!shareData };
 }
 
 /** 同期メッセージ（ヘッダー・設定タブ共通） */
@@ -311,14 +312,15 @@ function DiscordSyncMsg({ msg, className = 'discord-link-msg', style }) {
 
 /** ヘッダーの即時同期ボタン（連携中だけ出す）。メッセージは DiscordSyncMsg、最終同期は DiscordSyncTime で別に置く（ヘッダーの2段の並びに合わせるため） */
 function DiscordSyncButton({ discord, ready }) {
-  const { link, sending, waitSec, syncNow } = discord;
+  const { link, sending, waitSec, syncNow, shareable } = discord;
   if (!link.token) return null;
   const waiting = waitSec > 0;
   const label = sending ? '同期中…' : waiting ? `待機中（${waitSec}秒）` : 'Discord 同期';
   const lastSync = link.lastSyncAt ? formatDiscordSyncTime(link.lastSyncAt) : 'まだ同期していません';
   return (
-    <button className="btn btn-yellow discord-sync-btn" onClick={syncNow} disabled={sending || waiting || !ready}
-      title={`Discord の出撃ボードへ今すぐ送ります（変更は30秒後に自動でも送られます）
+    <button className="btn btn-yellow discord-sync-btn" onClick={syncNow} disabled={sending || waiting || !ready || !shareable}
+      title={shareable ? `Discord の出撃ボードへ今すぐ送ります（変更は30秒後に自動でも送られます）
+最終同期日時: ${lastSync}` : `過去のシーズンは Discord に送りません（送るのは PvP・PvE・今の Season だけ）
 最終同期日時: ${lastSync}`}>
       <Icon name="refresh" size={14} color="currentColor"
         style={sending ? { animation: 'spin 1s linear infinite' } : undefined} />

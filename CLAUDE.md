@@ -27,7 +27,7 @@
 | `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ一覧 `RAID_MAPS`・マップ名正規化 `normalizeRaidMapName`・目標チェックキー `raidObjKey`・目標分類 `classifyRaidObj`・マップ画像定数, GraphQLクエリ | ~290 |
 | `01-api.js` | fetchGraphQL + json.tarkov.dev フォールバック変換 | ~410 |
 | `02-translations.js` | translateObjective, getObjTypeLabel | ~75 |
-| `03-storage.js` | loadState, saveState, 全データバックアップ（exportAllData/restoreAllData）, IndexedDB（差し替えマップ画像）, モードシステム | ~200 |
+| `03-storage.js` | loadState, saveState, 全データバックアップ（exportAllData/restoreAllData）, IndexedDB（差し替えマップ画像）, モードシステム（シーズン id `season_current` の移行 `migrateSeasonIds`・新シーズン開始 `startNewSeason`） | ~375 |
 | `04-helpers.js` | 数値フォーマット, Wiki取得, levenshtein | ~145 |
 | `05-icons.js` | IP(SVGパス) + Icon コンポーネント (JSX) | ~75 |
 | `06-themes.js` | THEMES + applyTheme | ~16 |
@@ -62,7 +62,7 @@
 | `33-tab-raid.js` | 出撃準備タブ（目標の行 `renderObjRow` は仲間の目標の合算した行にも使う） | ~1500 |
 | `34-tab-maps.js` | マップタブ（ピン登録・画像差し替え） | ~1060 |
 | `90-render-close.js` | return文のクロージング | ~12 |
-| `99-mount.js` | ReactDOM.createRoot + render | ~4 |
+| `99-mount.js` | 起動時の移行（モード・シーズン id・マップ名）+ ReactDOM.createRoot + render | ~5 |
 
 ### 機能仕様書（タブごと）
 
@@ -146,7 +146,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 |---|---|
 | `pvp` | `regular`（設定タブのゲームモードが PvE なら `pve`） |
 | `pve` | `pve`（同上・設定タブのゲームモードに従う） |
-| `season_N` | **`pvp-season`**（設定タブのゲームモードに関わらず。`loadAPIData` が `isSeasonMode(activeMode)` で判定） |
+| `season_current`（今のシーズン）・過去のシーズン | **`pvp-season`**（設定タブのゲームモードに関わらず。`loadAPIData` が `isSeasonMode(activeMode)` で判定） |
 
 - `pvp-season` はハイフンを含み GraphQL の enum 名として不正なため、`fetchGraphQL` は GraphQL を経由せず **JSON API（`json.tarkov.dev/pvp-season/...`）に直行**する（`_isJsonApiOnlyQuery`）。このため GraphQL 復旧後もシーズンモードは常にフォールバック扱い（ヘッダーに「JSON API 接続中」）。
 - ハイドアウト（`QUERIES.hideout`）はシーズン時のみ `gameMode: pvp-season` を付けて取得先を切り替える。
@@ -166,13 +166,13 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 
 | キー | 内容 |
 |---|---|
-| `eft_active_mode` | 現在アクティブなモード文字列（`'pvp'` / `'pve'` / `'season_1'` など）|
-| `eft_seasons` | 追加済みシーズンの id 配列（例: `["season_1","season_2"]`）|
+| `eft_active_mode` | 現在アクティブなモード文字列（`'pvp'` / `'pve'` / `'season_current'` / 過去のシーズン id）|
+| `eft_seasons` | 追加済みシーズンの id 配列（先頭が今のシーズン・以降は新しい順。例: `["season_current","season_past_20270115"]`）|
 | `eft_guides_v1` | ガイドビューアのチェック済みステップ（モード非依存）|
 | `eft_custom_tasks_v1` | 出撃準備タブで手動登録したカスタムタスク（全モード共通）|
 | `eft_presets_v1` / `eft_presets_standard` | 武器プリセット比較の登録プリセット / 基準プリセットID |
 | `eft_blackout_v1` | 旧・イベントタスク完了フラグ（全モード共通だった頃のもの）。PvP モードで `eft_blackout_v1__pvp` が無いときの読み込み元としてのみ参照 |
-| `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Seasonは `eft_manual_unlocks_v1__season_N` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
+| `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Season（今・過去とも）は `eft_manual_unlocks_v1__<シーズンid>` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
 | `eft_maps_v1` | マップ画像メタデータ（`{ [mapName]: { file, width, height } }`）— 自動取得・グローバル |
 | `eft_task_pins_v1` | タスク目標のピン座標配列（`[{ id, mapName, taskId, objectiveId, x, y, memo?, requiredItems?, memoImages? }]`）— グローバル。`memoImages` は詳細位置画像 `[{ id, name(省略名), dataUrl(JPEG) }]` |
 | `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, lastSentAt, lastShareHash, hiddenMembers?, botUrl? }`（`hiddenMembers` = 出撃準備タブの参加者のボタンで外した人の userId 配列。旧 `hideFriends` は読み込み時に消す）（連携中＝同期する。オン/オフ設定は持たない。`lastShareHash`/`lastSentAt` は前回送った内容のハッシュと送信時刻＝同じ内容なら送らない判定用） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
@@ -195,10 +195,16 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 
 ### モードシステム設計（2026-07-04）
 
-**モードの種類**: `pvp`（通常PvP）・`pve`（PvEサーバ）・`season_N`（シーズン1,2,3…）
+**モードの種類**: `pvp`（通常PvP）・`pve`（PvEサーバ）・`season_current`（今のシーズン）・過去のシーズン（`season_past_YYYYMMDD`／移行前の番号付き `season_N`）
+
+**シーズンの id（2026-11-13・Issue #57）**: 今のシーズンは全員同じ固定 id **`season_current`**（Discord 出撃共有の `mode` をそろえるため。以前はブラウザごとに `season_1`, `season_2`… と番号を振っていた）。
+- 起動時に毎回 `migrateSeasonIds()`（`99-mount.js`）が、シーズン一覧に `season_current` が無ければ**いちばん大きい番号の `season_N`** の `eft_*__season_N` キーを `__season_current` へ移し、一覧とアクティブモードも置き換える（古いバックアップを復元したときも次の起動で移る）。他の `season_N` は過去のシーズンとして残る。
+- モードバーの「+ シーズン追加」（`season_current` が無いとき）/「+ 新シーズン開始」（あるとき・確認ダイアログあり）= `startNewSeason()`。後者は今の `season_current` のキーを `season_past_YYYYMMDD`（同じ日の2回目以降は `_2`…）へ移し、空の `season_current` に切り替える。
+- **過去のシーズンは Discord に送らない**（`isPastSeasonMode()`。共有データを作らず、自動送信なし・即時同期ボタンは押せない）。
+- `isSeasonMode(mode)` は `season_` で始まるもの全て（取得データは `pvp-season`）。表示は `getModeLabel()`: `Season` / `過去 Season（〜YYYY/MM/DD）` / `過去 Season N`。
 
 **UIの位置**: タイトル下・タブバー上の「モードバー」（`.mode-bar`）  
-→ `[PvP] [PvE] [Season 1] [+ シーズン追加]`。アクティブモードはアクセントカラーで強調。
+→ `[PvP] [PvE] [Season] [過去 Season（〜…）] [+ 新シーズン開始]`。アクティブモードはアクセントカラーで強調。過去のシーズンは薄い文字（`.mode-btn-past`）。
 
 **切り替え動作**: `switchMode(mode)` が `eft_active_mode` を書き換えて `window.location.reload()`。
 セッション中にモードは変わらないので、`activeMode` と `seasons` は App 内でローカル変数（useState 不要）。
