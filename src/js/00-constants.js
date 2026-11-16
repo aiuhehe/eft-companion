@@ -1,5 +1,8 @@
 const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
+// 手元で開いているか（file:// か localhost）。開発者向けの表示（ヘッダーの「JSON API 接続中」「最終取得」）はこのときだけ出す
+const IS_LOCAL_DEV = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+
 // ================== GUIDE MAP ==================
 // guides-data.js が読み込まれている場合、タスク名 → ガイドID のマップを構築
 const GUIDE_BY_TASKNAME = (() => {

@@ -7,8 +7,9 @@
 | `src/js/*.js` | **ソースコード（編集対象）** — 番号順に結合される JSX/JS |
 | `src/head.html` | HTML骨格の先頭（`<script type="text/babel">` 開始タグまで） |
 | `src/tail.html` | HTML骨格の末尾（`</script></body></html>`） |
-| `build.sh` | ビルドスクリプト（Mac / WSL / Git Bash）。`--dist` で公開用 `dist/`（`index.html` 化・マップ画像なし）も作成 |
-| `build.ps1` | ビルドスクリプト（Windows PowerShell） |
+| `build.sh` | ビルドスクリプト（Mac / WSL / Git Bash）。`--dist` で公開用 `dist/`（`index.html` 化・マップ画像なし）も作成。環境変数 `DISCORD_BOT_URL`（無ければ `.env` の同名の行）があれば `__DISCORD_BOT_URL__` を置き換える（`pages.yml` はシークレットから渡す） |
+| `.env` / `.env.example` | ローカルビルド用の設定（`DISCORD_BOT_URL=…`）。`.env` は gitignore 済み・`.env.example` をコピーして作る |
+| `build.ps1` | ビルドスクリプト（Windows PowerShell）。`DISCORD_BOT_URL` の扱いは `build.sh` と同じ。**ASCII のみで書く**（PowerShell 5.1 は BOM なし UTF-8 を ANSI で読むため日本語が壊れる） |
 | `eft-tool.html` | **ビルド出力（直接編集しない）** — `build.sh` or `build.ps1` で生成 |
 | `style.css` | スタイルシート（`<link>` で読み込み） |
 | `docs/` | 機能仕様書・設計ドキュメント |
@@ -17,7 +18,7 @@
 | `.github/workflows/ci.yml` | `main` 向け PR ごとに `./build.sh --dist` を実行してビルドが通るか確認（公開はしない） |
 | `.github/workflows/pages.yml` | `main` への push で `./build.sh --dist` → `dist/` を GitHub Pages（https://aiuhehe.github.io/eft-companion/）に公開 |
 | `.github/workflows/discord-notify.yml` + `.github/scripts/discord_notify.py` | PR の動き（作成・レビュー・コメント・CI失敗・Pages公開・マージ）を Discord フォーラムへ通知（1 PR = 1 投稿）＋毎朝のまとめ。仕様は `docs/Discord通知仕様書.md` |
-| `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`maps/`・開発用作業ファイルを除外 |
+| `.gitignore` | `eft-tool.html`・`dist/`・`backups/`・`.claude/`・`.env`・`maps/`・開発用作業ファイルを除外 |
 
 ### ソースファイル一覧（`src/js/`）
 
@@ -26,19 +27,22 @@
 | `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ一覧 `RAID_MAPS`・マップ名正規化 `normalizeRaidMapName`・目標チェックキー `raidObjKey`・目標分類 `classifyRaidObj`・マップ画像定数, GraphQLクエリ | ~290 |
 | `01-api.js` | fetchGraphQL + json.tarkov.dev フォールバック変換 | ~410 |
 | `02-translations.js` | translateObjective, getObjTypeLabel | ~75 |
-| `03-storage.js` | loadState, saveState, 全データバックアップ（exportAllData/restoreAllData）, IndexedDB（差し替えマップ画像）, モードシステム | ~200 |
+| `03-storage.js` | loadState, saveState, 全データバックアップ（exportAllData/restoreAllData）, IndexedDB（差し替えマップ画像）, モードシステム（シーズン id `season_current` の移行 `migrateSeasonIds`・新シーズン開始 `startNewSeason`） | ~375 |
 | `04-helpers.js` | 数値フォーマット, Wiki取得, levenshtein | ~145 |
 | `05-icons.js` | IP(SVGパス) + Icon コンポーネント (JSX) | ~75 |
 | `06-themes.js` | THEMES + applyTheme | ~16 |
 | `07-charts.js` | FleaHistoryChart, MultiLineFleaChart (JSX) | ~295 |
-| `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`） | ~135 |
+| `08-pre-app.js` | イベント定数, プラン定数, getAmmoAcquisitions, タブ定義 `TAB_DEFS`＋URLハッシュでのタブ保持（`getTabFromHash`/`writeTabHash`・`#board=<id>` は `getBoardIdFromHash` で出撃準備タブ） | ~145 |
+| `09-friend-board.js` | Discord 出撃共有の仲間の目標（出撃準備タブの参加者のボタンで出す人を選ぶ `FriendMemberBar`）: `GET /api/boards`・`GET /api/boards/:id`・30秒ごとの読み直しフック `useFriendBoard`・出撃準備タブの `FriendMemberBar` / `FriendBoardView`・参加者フック `useFriendBoardPeople`（自分の分は手元の共有データに差し替え・自分を探す `findSelfMember`・目標ごとに残っている人 `holdersOf`＝地図の右の一覧の色の四角にも使う）（行は出撃準備タブの `renderObjRow` で描く）(JSX) | ~500 |
 | `09-manual-unlocks.js` | 手動登録したタスク↔アイテム紐づけの読み書き | ~35 |
-| `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData`・JSON 保存 `downloadRaidShareData` | ~110 |
+| `09-discord-link.js` | Discord 出撃共有の連携: Bot の URL 定数 `DISCORD_BOT_URL`（ビルド時に環境変数で置換）・`POST/DELETE /api/link`・`PUT /api/share`・自動同期フック `useDiscordSync`（30秒まとめ送信・同じ内容なら送らない）・ヘッダーの即時同期ボタン `DiscordSyncButton`・設定タブの `DiscordLinkSection` (JSX) | ~460 |
+| `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData` | ~100 |
+| `09-raid-aggregate.js` | Discord 出撃共有の合算（仲間の目標）`aggregateRaidMap` / `aggregateRaidOverview`（Bot の `aggregate.ts` と同じルール。行はまとめる前の目標 `entries` も持つ） | ~185 |
 | `10-app-state.js` | `function App() {` + 全useState/useRef + 初期effect | ~740 |
 | `11-app-effects.js` | ジャーナル/タスクタブ state + 永続化effect | ~175 |
 | `12-app-callbacks.js` | ammo memo + plan/journal/wipe callbacks + API読込 | ~500 |
 | `13-app-memos.js` | traderAnalytics, hideoutCalc, filteredTasks 等の全useMemo | ~1200 |
-| `14-app-components.js` | StashControl, Tooltip, BarterCard, CraftCard, MapPinVisual 等 (JSX) | ~1120 |
+| `14-app-components.js` | StashControl, Tooltip, BarterCard, CraftCard, MapPinVisual 等 (JSX)・末尾で共有データ `raidShareData` と `useDiscordSync`・仲間の目標 `useFriendBoard` / `useFriendBoardPeople` を呼ぶ | ~1140 |
 | `15-render-open.js` | return文の開始 + ヘッダー + タブバー | ~80 |
 | `20-tab-status.js` | 設定タブ | ~230 |
 | `21-tab-advisor.js` | トレーダー解放タブ | ~140 |
@@ -55,10 +59,10 @@
 | `32-tab-wipeflow.js` | プランタブ（id は `wipeflow` のまま） | ~360 |
 | `33-tab-armor.js` | アーマープレート一覧タブ | ~135 |
 | `33-tab-presets.js` | 武器プリセット比較タブ | ~900 |
-| `33-tab-raid.js` | 出撃準備タブ | ~1380 |
+| `33-tab-raid.js` | 出撃準備タブ（目標の行 `renderObjRow` は仲間の目標の合算した行にも使う） | ~1500 |
 | `34-tab-maps.js` | マップタブ（ピン登録・画像差し替え） | ~1060 |
 | `90-render-close.js` | return文のクロージング | ~12 |
-| `99-mount.js` | ReactDOM.createRoot + render | ~4 |
+| `99-mount.js` | 起動時の移行（モード・シーズン id・マップ名）+ ReactDOM.createRoot + render | ~5 |
 
 ### 機能仕様書（タブごと）
 
@@ -85,7 +89,7 @@
 | 鍵一覧 | `docs/鍵一覧機能仕様書.md` |
 | 在庫（スクリーンショット登録・OCR） | `docs/在庫機能仕様書.md` |
 | マップ | `docs/マップ機能仕様書.md` |
-| Discord 出撃共有（Bot 連携・共有データ形式・API） | `docs/Discord出撃共有Bot設計書.md` |
+| Discord 出撃共有（**アプリ側の動きだけ**：連携 UI・自動送信・Bot の URL の持ち方・保存キー・仲間の目標の画面・ピンの同期。全体設計・共有データ形式・API・ボード表示・合算・Bot の内部設計の正本は aiuhehe/tarkov-raid-bot の `docs/設計書.md`。Bot だけの変更ではこちらを直さない） | `docs/Discord出撃共有Bot設計書.md` |
 | （GitHub Actions）Discord 通知 | `docs/Discord通知仕様書.md` |
 
 > **JSXソース分割について（2026-07-03）**
@@ -127,7 +131,7 @@
 
 GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始める（フォールバック切替はコード変更不要）。実装を追加する際はフォールバック時の挙動も考慮すること。
 
-**フォールバック中も全タブが通常表示で動作する**（2026-11-11・Issue #7）。弾薬・プレート・プリセットを含め、タブバーの半透明表示（旧 `restricted`）は廃止。ヘッダーにはフォールバック中のみ情報表示として「JSON API 接続中」（`globe` アイコン・`isFallback`）を出す（警告ではない）。
+**フォールバック中も全タブが通常表示で動作する**（2026-11-11・Issue #7）。弾薬・プレート・プリセットを含め、タブバーの半透明表示（旧 `restricted`）は廃止。ヘッダーにはフォールバック中のみ情報表示として「JSON API 接続中」（`globe` アイコン・`isFallback`）を出す（警告ではない）。**手元で開いたとき（`IS_LOCAL_DEV`＝`file://` か localhost）だけ**で、GitHub Pages 版には出さない（2026-11-12・「最終取得」も同じ）。
 
 **アイテム詳細系クエリのフォールバック（`01-api.js`・2026-10-30）:**
 - `ammo` と、クエリ名が `items` の `ammoPacks` / `armorPlates` / `weapons` / `weaponMods` は `_detectItemQueryKind()` で振り分け、`_loadItemDetailContext(jMode, lang)` の共通データ（翻訳済み items・traders・tasks・hideout と生の barters・crafts）から `_itemDetailTransforms[種別]` / `_transformAmmo` で変換する。**`ammo` / `ammoBox` / `weapons` は実装済み**（2026-11-02・弾薬タブはフォールバック中も通常表示）。**`armorPlate` も実装済み**（2026-11-10・プレートタブもフォールバック中に通常表示）。**`weaponMods` も実装済み**（2026-11-11・プリセットタブもフォールバック中に通常表示。`properties` は `ItemPropertiesWeaponMod` のみ値を持ち他は `{}`）。
@@ -142,7 +146,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 |---|---|
 | `pvp` | `regular`（設定タブのゲームモードが PvE なら `pve`） |
 | `pve` | `pve`（同上・設定タブのゲームモードに従う） |
-| `season_N` | **`pvp-season`**（設定タブのゲームモードに関わらず。`loadAPIData` が `isSeasonMode(activeMode)` で判定） |
+| `season_current`（今のシーズン）・過去のシーズン | **`pvp-season`**（設定タブのゲームモードに関わらず。`loadAPIData` が `isSeasonMode(activeMode)` で判定） |
 
 - `pvp-season` はハイフンを含み GraphQL の enum 名として不正なため、`fetchGraphQL` は GraphQL を経由せず **JSON API（`json.tarkov.dev/pvp-season/...`）に直行**する（`_isJsonApiOnlyQuery`）。このため GraphQL 復旧後もシーズンモードは常にフォールバック扱い（ヘッダーに「JSON API 接続中」）。
 - ハイドアウト（`QUERIES.hideout`）はシーズン時のみ `gameMode: pvp-season` を付けて取得先を切り替える。
@@ -162,15 +166,16 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 
 | キー | 内容 |
 |---|---|
-| `eft_active_mode` | 現在アクティブなモード文字列（`'pvp'` / `'pve'` / `'season_1'` など）|
-| `eft_seasons` | 追加済みシーズンの id 配列（例: `["season_1","season_2"]`）|
+| `eft_active_mode` | 現在アクティブなモード文字列（`'pvp'` / `'pve'` / `'season_current'` / 過去のシーズン id）|
+| `eft_seasons` | 追加済みシーズンの id 配列（先頭が今のシーズン・以降は新しい順。例: `["season_current","season_past_20270115"]`）|
 | `eft_guides_v1` | ガイドビューアのチェック済みステップ（モード非依存）|
 | `eft_custom_tasks_v1` | 出撃準備タブで手動登録したカスタムタスク（全モード共通）|
 | `eft_presets_v1` / `eft_presets_standard` | 武器プリセット比較の登録プリセット / 基準プリセットID |
 | `eft_blackout_v1` | 旧・イベントタスク完了フラグ（全モード共通だった頃のもの）。PvP モードで `eft_blackout_v1__pvp` が無いときの読み込み元としてのみ参照 |
-| `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Seasonは `eft_manual_unlocks_v1__season_N` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
+| `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Season（今・過去とも）は `eft_manual_unlocks_v1__<シーズンid>` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
 | `eft_maps_v1` | マップ画像メタデータ（`{ [mapName]: { file, width, height } }`）— 自動取得・グローバル |
 | `eft_task_pins_v1` | タスク目標のピン座標配列（`[{ id, mapName, taskId, objectiveId, x, y, memo?, requiredItems?, memoImages? }]`）— グローバル。`memoImages` は詳細位置画像 `[{ id, name(省略名), dataUrl(JPEG) }]` |
+| `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, lastSentAt, lastShareHash, hiddenMembers?, botUrl? }`（`hiddenMembers` = 出撃準備タブの参加者のボタンで外した人の userId 配列。旧 `hideFriends` は読み込み時に消す）（連携中＝同期する。オン/オフ設定は持たない。`lastShareHash`/`lastSentAt` は前回送った内容のハッシュと送信時刻＝同じ内容なら送らない判定用） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
 | `eft_custom_items_v1` | 登録タスク品（API に無いクエストアイテム等）`[{ id:'citem_…', name, shortName, iconLink(128px PNG dataURL) }]` — グローバル。ピンの `requiredItems` から id 参照 |
 
 #### モードごとに独立するキー（`__${mode}` サフィックス付き）
@@ -190,10 +195,16 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 
 ### モードシステム設計（2026-07-04）
 
-**モードの種類**: `pvp`（通常PvP）・`pve`（PvEサーバ）・`season_N`（シーズン1,2,3…）
+**モードの種類**: `pvp`（通常PvP）・`pve`（PvEサーバ）・`season_current`（今のシーズン）・過去のシーズン（`season_past_YYYYMMDD`／移行前の番号付き `season_N`）
+
+**シーズンの id（2026-11-13・Issue #57）**: 今のシーズンは全員同じ固定 id **`season_current`**（Discord 出撃共有の `mode` をそろえるため。以前はブラウザごとに `season_1`, `season_2`… と番号を振っていた）。
+- 起動時に毎回 `migrateSeasonIds()`（`99-mount.js`）が、シーズン一覧に `season_current` が無ければ**いちばん大きい番号の `season_N`** の `eft_*__season_N` キーを `__season_current` へ移し、一覧とアクティブモードも置き換える（古いバックアップを復元したときも次の起動で移る）。他の `season_N` は過去のシーズンとして残る。
+- モードバーの「+ シーズン追加」（`season_current` が無いとき）/「+ 新シーズン開始」（あるとき・確認ダイアログあり）= `startNewSeason()`。後者は今の `season_current` のキーを `season_past_YYYYMMDD`（同じ日の2回目以降は `_2`…）へ移し、空の `season_current` に切り替える。
+- **過去のシーズンは Discord に送らない**（`isPastSeasonMode()`。共有データを作らず、自動送信なし・即時同期ボタンは押せない）。
+- `isSeasonMode(mode)` は `season_` で始まるもの全て（取得データは `pvp-season`）。表示は `getModeLabel()`: `Season` / `過去 Season（〜YYYY/MM/DD）` / `過去 Season N`。
 
 **UIの位置**: タイトル下・タブバー上の「モードバー」（`.mode-bar`）  
-→ `[PvP] [PvE] [Season 1] [+ シーズン追加]`。アクティブモードはアクセントカラーで強調。
+→ `[PvP] [PvE] [Season] [過去 Season（〜…）] [+ 新シーズン開始]`。アクティブモードはアクセントカラーで強調。過去のシーズンは薄い文字（`.mode-btn-past`）。
 
 **切り替え動作**: `switchMode(mode)` が `eft_active_mode` を書き換えて `window.location.reload()`。
 セッション中にモードは変わらないので、`activeMode` と `seasons` は App 内でローカル変数（useState 不要）。

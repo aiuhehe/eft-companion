@@ -45,7 +45,7 @@
                     </label>
                   ))}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>※ 変更後はAPIデータを再取得してください</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>※ 変更後はページをリロードしてください</div>
               </div>
               <div>
                 <div className="setting-label">プレイヤーレベル</div>
@@ -98,6 +98,9 @@
               </span>
             </div>
           </div>
+
+          {/* Discord 出撃共有の連携（09-discord-link.js） */}
+          <DiscordLinkSection discord={discordSync} />
 
           {/* Trader Status */}
           <div className="section">

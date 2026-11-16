@@ -497,7 +497,7 @@
       const serverDown = (e instanceof TypeError) || (e instanceof SyntaxError)
         || /Failed to fetch|NetworkError|Load failed|aborted|HTTP 5\d\d/i.test(e.message || '');
       setLoadError(serverDown
-        ? 'tarkov.dev / json.tarkov.dev ともに応答していません（時間をおいて「再取得」してください）'
+        ? 'tarkov.dev / json.tarkov.dev ともに応答していません（時間をおいてページをリロードしてください）'
         : 'APIエラー: ' + e.message);
     } finally {
       setLoading(false);

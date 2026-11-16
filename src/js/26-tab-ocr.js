@@ -112,7 +112,7 @@
 
               {apiData.items.length === 0 && (
                 <div style={{ marginBottom: 8, color: 'var(--warn)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Icon name="alert-triangle" size={12} color="var(--warn)" /> アイテムデータが未取得です。「APIデータ取得」を先に実行してください。
+                  <Icon name="alert-triangle" size={12} color="var(--warn)" /> アイテムデータが未取得です。読み込みが終わるまで待つか、ページをリロードしてください。
                 </div>
               )}
 

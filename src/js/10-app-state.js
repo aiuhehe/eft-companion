@@ -4,7 +4,7 @@ function App() {
 
   // ===== モードシステム（セッション中は不変・切替時はリロード） =====
   const activeMode = getActiveMode();
-  const seasons    = getSeasons();  // ['season_1', 'season_2', ...]
+  const seasons    = getSeasons();  // ['season_current', 'season_past_YYYYMMDD', ...]
 
   // Settings（localStorageから復元、なければデフォルト）
   const [gameMode, setGameMode] = useState(saved.gameMode || 'regular');
