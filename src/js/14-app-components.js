@@ -732,29 +732,42 @@
     </div>
   );
 
-  const MapPinMarker = ({ leftPct, topPct, obj, task, cat, pin, onRemove, onReposition, forceOpen }) => {
+  // forceOpen: 吹き出しを開いた状態で出す（「置きなおし」ボタン・出撃準備タブの「ピンを見る」）。onClose は吹き出しを閉じたとき
+  const MapPinMarker = ({ leftPct, topPct, obj, task, cat, pin, onRemove, onReposition, forceOpen, onClose }) => {
     const [open, setOpen] = React.useState(false);
     const pinRef = React.useRef(null);
 
     React.useEffect(() => { if (forceOpen) setOpen(true); }, [forceOpen]);
+    const close = () => { setOpen(false); onClose?.(); };
 
     // 吹き出し外クリックで閉じる
     React.useEffect(() => {
       if (!open) return;
-      const close = (e) => {
-        if (pinRef.current && !pinRef.current.contains(e.target)) setOpen(false);
+      const onDown = (e) => {
+        if (pinRef.current && !pinRef.current.contains(e.target)) close();
       };
-      document.addEventListener('mousedown', close);
-      return () => document.removeEventListener('mousedown', close);
+      document.addEventListener('mousedown', onDown);
+      return () => document.removeEventListener('mousedown', onDown);
     }, [open]);
 
+    // このピンを登録している人（自分のピンに仲間のピンがまとまっているとき、または仲間だけのピン）。ピンの上に色の四角で並べる（Issue #36）
+    const owners = pin?.friendPins?.length
+      ? [...(pin.friendOnly || pinSelfColorIdx == null ? [] : [{ userId: friendPeople.selfId, colorIdx: pinSelfColorIdx }]),
+         ...pin.friendPins.filter((f, i, a) => a.findIndex(x => x.userId === f.userId) === i)]
+      : [];
+
     return (
-      <div ref={pinRef} data-map-pin=""
+      <div ref={pinRef} data-map-pin="" data-map-pin-id={pin?.id}
         style={{ position: 'absolute', left: `${leftPct}%`, top: `${topPct}%`,
           transform: 'translate(-50%, -100%)', cursor: 'pointer', zIndex: open ? 5 : 2 }}
-        onClick={e => { e.stopPropagation(); setOpen(o => !o); }}>
-        <Icon name={CAT_ICON[cat] || 'map-pin'} size={20} className={pin?.friendOnly ? 'map-pin-friend' : ''}
-          color={open ? '#fff' : pin?.friendOnly ? memberColor(pin.friendPins[0]?.colorIdx) : (CAT_COLOR[cat] || 'var(--state-pin)')} />
+        onClick={e => { e.stopPropagation(); if (open) close(); else setOpen(true); }}>
+        {owners.length > 0 && !open && (
+          <span className="map-pin-owners" title={`ピンを登録している人: ${owners.map(o => friendPeople.nameOf(o.userId)).join('・')}`}>
+            {owners.map(o => <MemberMarker key={o.userId} colorIdx={o.colorIdx} size={7} />)}
+          </span>
+        )}
+        <Icon name={CAT_ICON[cat] || 'map-pin'} size={20}
+          color={open ? '#fff' : (CAT_COLOR[cat] || 'var(--state-pin)')} />
         {open && (
           <div className="map-pin-bubble" onClick={e => e.stopPropagation()}>
             <div className="map-pin-bubble-task">{task.name}</div>
@@ -775,18 +788,18 @@
               <div style={{ marginTop: 4 }}><PinImageChips images={pin.memoImages} /></div>
             )}
             <FriendPinNotes friendPins={pin?.friendPins} />
-            {pin?.friendOnly && <FriendPinActions pin={pin} onDone={() => setOpen(false)} />}
+            {pin?.friendOnly && <FriendPinActions pin={pin} onDone={close} />}
             {(onRemove || onReposition) && (
               <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
                 {onReposition && (
-                  <button onClick={e => { e.stopPropagation(); onReposition(); setOpen(false); }}
+                  <button onClick={e => { e.stopPropagation(); onReposition(); close(); }}
                     style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, cursor: 'pointer',
                       background: 'var(--accent-muted)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
                     再配置
                   </button>
                 )}
                 {onRemove && (
-                  <button onClick={e => { e.stopPropagation(); onRemove(); setOpen(false); }}
+                  <button onClick={e => { e.stopPropagation(); onRemove(); close(); }}
                     style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, cursor: 'pointer',
                       background: 'var(--danger-bg)', color: 'var(--danger-text)', border: '1px solid var(--danger)' }}>
                     削除
@@ -1237,5 +1250,7 @@
   }, [customItems, addCustomItem, pinApiItemById]);
   /** まとめたピンに入っている仲間のピンを、自分の画面でだけ隠す */
   const hideFriendPin = useCallback((pin) => hiddenFriendPins.hide(pin.friendPins.map(f => friendPinKey(f.userId, f.pin.id))), [hiddenFriendPins.hide]);
+  /** ボードでの自分の色（ピンの上の色の四角に使う。自分が見つからなければ null） */
+  const pinSelfColorIdx = (friendBoard.detail?.members || []).find(m => m.userId === friendPeople.selfId)?.colorIdx ?? null;
 
   // ================== RENDER ==================

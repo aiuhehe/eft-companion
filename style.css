@@ -618,7 +618,9 @@
 .friend-pin-note-memo { color: var(--text-secondary); white-space: pre-wrap; }
 .friend-pin-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 .friend-pin-actions .btn { font-size: 10px; padding: 2px 7px; display: inline-flex; align-items: center; gap: 3px; }
-.map-pin-friend { filter: drop-shadow(0 0 1px #000) drop-shadow(0 1px 3px rgba(0,0,0,0.7)); }
+/* マップタブ: ピンを登録している人（自分を含む）の色の四角をピンの上に横に並べる。ピン自体の色は変えない */
+.map-pin-owners { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 1px;
+  display: flex; gap: 1px; padding: 1px; border-radius: 2px; background: rgba(0,0,0,0.6); pointer-events: none; }
 .friend-pin-info { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--text-dim); margin: 2px 0 4px; }
 .fb-goal-list { display: flex; flex-direction: column; gap: 3px; }
 /* 自分の目標の行（.delivery-chip）と同じ枠・余白。チェックボックスの位置は .fb-goal-spacer で空ける */

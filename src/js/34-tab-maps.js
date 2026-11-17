@@ -146,6 +146,19 @@
           setMapsPendingSearch('');
         };
 
+        // 「置きなおし」: 地図上のそのピンの吹き出し（再配置・削除）を開き、ピンが見える位置までスクロールする。ズームは戻す
+        const focusPin = (pinId) => {
+          cancelAll();
+          mapsViewportRef.current = { zoom: 1, panX: 0, panY: 0 };
+          setMapsZoom(1); setMapsPanX(0); setMapsPanY(0);
+          setMapsHighlightedPinId(pinId);
+          setTimeout(() => {
+            // 吹き出しはピンの上に出るので、吹き出しを画面の中央に（吹き出しが無ければピン）
+            const el = document.querySelector(`[data-map-pin-id="${CSS.escape(pinId)}"]`);
+            (el?.querySelector('.map-pin-bubble') || el)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        };
+
         const filteredPending = mapsPendingSearch
           ? unpinned.filter(({ task, obj }) =>
               task.name.includes(mapsPendingSearch) || objDisplayName(obj).includes(mapsPendingSearch))
@@ -692,6 +705,7 @@
                           obj={obj} task={task} cat={getCat(obj)} pin={pin}
                           pinIndex={pinsForObj.length > 1 ? pinIdx + 1 : null}
                           forceOpen={mapsHighlightedPinId === pin.id}
+                          onClose={mapsHighlightedPinId === pin.id ? () => setMapsHighlightedPinId(null) : undefined}
                           onRemove={() => removeTaskPin(pin.id)}
                           onReposition={() => { setMapsRepositioningPinId(pin.id); setMapsPlacingObjective(null); setMapsPendingPinCoords(null); }}
                         />
@@ -727,7 +741,7 @@
                 {friendPinMembers.length > 0 && (
                   <span>
                     <Icon name="map-pin" size={11} color="var(--text-dim)" />
-                    {' '}メンバーの色のアイコンは同じボードの仲間のピンです{friendOnlyCount ? `（このマップ ${friendOnlyCount}件）` : ''}。押すと「自分のピンとして保存」「隠す」ができます
+                    {' '}ピンの上の色の四角は、そのピンを登録している人（自分を含む）です。仲間だけのピン{friendOnlyCount ? `（このマップ ${friendOnlyCount}件）` : ''}は押すと「自分のピンとして保存」「隠す」ができます
                   </span>
                 )}
                 {hiddenFriendPins.hidden.size > 0 && (
@@ -843,12 +857,22 @@
                       {items.map(({ task, obj }) => {
                         const pinsForObj = pinsByObjId[obj.id] || [];
                         return objRow({ task, obj },
-                          // ヘッダー右：ピンを追加ボタン
-                          <button className="btn btn-sm btn-yellow"
-                            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3 }}
-                            onClick={() => { setMapsPlacingObjective({ taskId: task.id, objectiveId: obj.id }); setMapsRepositioningPinId(null); setMapsPendingPinCoords(null); }}>
-                            <Icon name="map-pin" size={11} color="var(--accent-on)" /> ピンを追加
-                          </button>,
+                          // ヘッダー右：置きなおし（ピンごと）＋ピンを追加
+                          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, flexShrink: 0 }}>
+                            {pinsForObj.map((pin, pi) => (
+                              <button key={pin.id} className="btn btn-sm btn-yellow"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                                title="地図上のこのピンを開きます（再配置・削除）"
+                                onClick={() => focusPin(pin.id)}>
+                                <Icon name="map-pin" size={11} color="var(--accent-on)" /> 置きなおし{pinsForObj.length > 1 ? ` ${pi + 1}` : ''}
+                              </button>
+                            ))}
+                            <button className="btn btn-sm btn-gray"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
+                              onClick={() => { setMapsPlacingObjective({ taskId: task.id, objectiveId: obj.id }); setMapsRepositioningPinId(null); setMapsPendingPinCoords(null); }}>
+                              <Icon name="plus" size={11} color="currentColor" /> ピンを追加
+                            </button>
+                          </div>,
                           // ピン行（番号 + 再配置 + 削除 + メモ編集）
                           <div style={{ paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {pinsForObj.map((pin, pi) => {
