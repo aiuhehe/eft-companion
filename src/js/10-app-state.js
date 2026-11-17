@@ -752,7 +752,7 @@ function App() {
     catch { alert('タスク品の保存に失敗しました（localStorage の容量不足の可能性があります）'); }
   };
   const addCustomItem = useCallback(({ name, shortName, iconLink }) => {
-    const item = { id: `citem_${Date.now()}`, name: name.trim(), shortName: (shortName || '').trim(), iconLink: iconLink || '' };
+    const item = { id: `citem_${Date.now()}${Math.random().toString(36).slice(2, 6)}`, name: name.trim(), shortName: (shortName || '').trim(), iconLink: iconLink || '' };
     setCustomItems(prev => { const next = [...prev, item]; saveCustomItems(next); return next; });
     return item;
   }, []);

@@ -36,13 +36,14 @@
 | `09-friend-board.js` | Discord 出撃共有の仲間の目標（出撃準備タブの参加者のボタンで出す人を選ぶ `FriendMemberBar`）: `GET /api/boards`・`GET /api/boards/:id`・30秒ごとの読み直しフック `useFriendBoard`・出撃準備タブの `FriendMemberBar` / `FriendBoardView`・参加者フック `useFriendBoardPeople`（自分の分は手元の共有データに差し替え・自分を探す `findSelfMember`・目標ごとに残っている人 `holdersOf`＝地図の右の一覧の色の四角にも使う）（行は出撃準備タブの `renderObjRow` で描く）(JSX) | ~500 |
 | `09-manual-unlocks.js` | 手動登録したタスク↔アイテム紐づけの読み書き | ~35 |
 | `09-discord-link.js` | Discord 出撃共有の連携: Bot の URL 定数 `DISCORD_BOT_URL`（ビルド時に環境変数で置換）・`POST/DELETE /api/link`・`PUT /api/share`・自動同期フック `useDiscordSync`（30秒まとめ送信・同じ内容なら送らない）・ヘッダーの即時同期ボタン `DiscordSyncButton`・設定タブの `DiscordLinkSection` (JSX) | ~460 |
+| `09-friend-pins.js` | Discord 出撃共有のマップピンの持ち寄り: 送る本文 `buildPinsShareData`（比率座標・Bot の上限で切る）・`PUT /api/pins` の自動送信フック `useDiscordPinSync`（10秒まとめ・同じ内容なら送らない）・`GET /api/boards/:id/pins` を `pinsUpdatedAt` が変わったときだけ読む `useFriendPins`・近いピンをまとめる `mergeMapPins`・隠したピン `useHiddenFriendPins` | ~260 |
 | `09-raid-share.js` | Discord 出撃共有の共有データ v1 作成 `buildRaidShareData` | ~100 |
 | `09-raid-aggregate.js` | Discord 出撃共有の合算（仲間の目標）`aggregateRaidMap` / `aggregateRaidOverview`（Bot の `aggregate.ts` と同じルール。行はまとめる前の目標 `entries` も持つ） | ~185 |
 | `10-app-state.js` | `function App() {` + 全useState/useRef + 初期effect | ~740 |
 | `11-app-effects.js` | ジャーナル/タスクタブ state + 永続化effect | ~175 |
 | `12-app-callbacks.js` | ammo memo + plan/journal/wipe callbacks + API読込 | ~500 |
 | `13-app-memos.js` | traderAnalytics, hideoutCalc, filteredTasks 等の全useMemo | ~1200 |
-| `14-app-components.js` | StashControl, Tooltip, BarterCard, CraftCard, MapPinVisual 等 (JSX)・末尾で共有データ `raidShareData` と `useDiscordSync`・仲間の目標 `useFriendBoard` / `useFriendBoardPeople` を呼ぶ | ~1140 |
+| `14-app-components.js` | StashControl, Tooltip, BarterCard, CraftCard, MapPinVisual 等 (JSX)・末尾で共有データ `raidShareData` と `useDiscordSync`・仲間の目標 `useFriendBoard` / `useFriendBoardPeople`・ピンの持ち寄り `useDiscordPinSync` / `useFriendPins`（`mergePinsForMap`・`saveFriendPinAsMine`・`hideFriendPin`）を呼ぶ | ~1240 |
 | `15-render-open.js` | return文の開始 + ヘッダー + タブバー | ~80 |
 | `20-tab-status.js` | 設定タブ | ~230 |
 | `21-tab-advisor.js` | トレーダー解放タブ | ~140 |
@@ -175,7 +176,8 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `eft_manual_unlocks_v1` | 手動登録したタスク↔アイテム紐づけ（PvP/PvE共通）。Season（今・過去とも）は `eft_manual_unlocks_v1__<シーズンid>` キーが存在すれば専用データ、なければこのキーを継承（コピーオンライト）。|
 | `eft_maps_v1` | マップ画像メタデータ（`{ [mapName]: { file, width, height } }`）— 自動取得・グローバル |
 | `eft_task_pins_v1` | タスク目標のピン座標配列（`[{ id, mapName, taskId, objectiveId, x, y, memo?, requiredItems?, memoImages? }]`）— グローバル。`memoImages` は詳細位置画像 `[{ id, name(省略名), dataUrl(JPEG) }]` |
-| `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, lastSentAt, lastShareHash, hiddenMembers?, botUrl? }`（`hiddenMembers` = 出撃準備タブの参加者のボタンで外した人の userId 配列。旧 `hideFriends` は読み込み時に消す）（連携中＝同期する。オン/オフ設定は持たない。`lastShareHash`/`lastSentAt` は前回送った内容のハッシュと送信時刻＝同じ内容なら送らない判定用） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
+| `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, lastSentAt, lastShareHash, hiddenMembers?, botUrl? }`（`lastPinsHash`/`lastPinsSentAt` = 前回 `PUT /api/pins` で送ったピン一式のハッシュと時刻。`hiddenMembers` = 出撃準備タブの参加者のボタンで外した人の userId 配列。旧 `hideFriends` は読み込み時に消す）（連携中＝同期する。オン/オフ設定は持たない。`lastShareHash`/`lastSentAt` は前回送った内容のハッシュと送信時刻＝同じ内容なら送らない判定用） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
+| `eft_friend_pins_hidden_v1` | Discord 出撃共有で自分の画面でだけ隠した仲間のピン `["<userId>/<pinId>", …]` — グローバル。マップタブの「隠したピン N件を元に戻す」で消える |
 | `eft_custom_items_v1` | 登録タスク品（API に無いクエストアイテム等）`[{ id:'citem_…', name, shortName, iconLink(128px PNG dataURL) }]` — グローバル。ピンの `requiredItems` から id 参照 |
 
 #### モードごとに独立するキー（`__${mode}` サフィックス付き）

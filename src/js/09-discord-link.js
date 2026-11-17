@@ -257,7 +257,7 @@ function useDiscordSync(shareData, ready) {
       // 送っている間に内容が変わっていたら、また30秒後に送る
       if (latestRef.current.shareHash !== hash) timerRef.current = setTimeout(() => doSyncRef.current(false), DISCORD_SYNC_DELAY_MS);
     } else if (r.status === 'unauthorized') {
-      updateLink({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined });
+      updateLink({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined, lastPinsHash: undefined, lastPinsSentAt: undefined });
       setSyncMsg({ kind: 'error', text: 'Discord 連携が解除されています。もう一度連携してください' });
     } else if (r.status === 'outdated') {
       failedHashRef.current = hash;
@@ -374,7 +374,7 @@ function DiscordLinkSection({ discord }) {
     const r = await discordLinkWithCode(botUrl, c);
     setBusy('');
     if (!r.ok) { setError(r.message); return; }
-    update({ token: r.token, userName: r.userName, linkedAt: new Date().toISOString(), lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined });
+    update({ token: r.token, userName: r.userName, linkedAt: new Date().toISOString(), lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined, lastPinsHash: undefined, lastPinsSentAt: undefined });
     clearSyncMsg();
     setCode('');
   };
@@ -384,7 +384,7 @@ function DiscordLinkSection({ discord }) {
     setBusy('unlink'); setError('');
     const reached = botUrl ? await discordUnlink(botUrl, link.token) : false;
     setBusy('');
-    update({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined });
+    update({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined, lastPinsHash: undefined, lastPinsSentAt: undefined });
     clearSyncMsg();
     if (!reached) setError('このブラウザの連携は解除しましたが、Bot に届きませんでした。確実に無効にするには Discord で /raid unlink を実行してください');
   };

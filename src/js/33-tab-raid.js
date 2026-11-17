@@ -1396,10 +1396,10 @@
                       const friendTasks = [...friendPeople.taskIds].filter(id => !fbActiveIds.has(id)).map(id => fbTaskById.get(id)).filter(Boolean);
                       const mapTasks = [...activeTasks, ...friendTasks];
                       const mapTaskById = new Map(mapTasks.map(t => [t.id, t]));
-                      const pinsHere = taskPins.filter(p => {
-                        if (p.mapName !== raidMap) return false;
+                      // 仲間のピン（§11.5・Issue #36）も重ね、同じ目標の近い位置のピンは1つにまとめる
+                      const pinsHere = mergePinsForMap(raidMap, taskPins.filter(p => p.mapName === raidMap)).filter(p => {
                         // 自分の進行タスクのピンは、自分を外していなければ出す
-                        if (fbActiveIds.has(p.taskId) && !friendBoard.hiddenMembers.has(friendPeople.selfId)) return true;
+                        if (!p.friendOnly && fbActiveIds.has(p.taskId) && !friendBoard.hiddenMembers.has(friendPeople.selfId)) return true;
                         const t = mapTaskById.get(p.taskId);
                         const o = t && (t.objectives || []).find(x => x.id === p.objectiveId);
                         return !!o && marksOf(t, o).length > 0;
