@@ -103,6 +103,16 @@ const classifyRaidObj = (type, foundInRaid) => {
   return null;
 };
 
+/**
+ * 途中進捗（あと何個・あと何体・eft_raid_obj_progress_v1）を記録する目標か（Issue #28）。
+ * 撃破・持ち込み・収集（FIR）だけ。設置・調査・脱出は今のチェックのみ。− / + を出すのは必要数 2 以上のときだけ（isProgressStepObj）
+ */
+const isProgressTargetObj = (obj) => {
+  const cat = classifyRaidObj(obj?.type, obj?.foundInRaid);
+  return cat === 'kill' || cat === 'bring' || cat === 'collect';
+};
+const isProgressStepObj = (obj) => isProgressTargetObj(obj) && Number(obj.count) >= 2;
+
 // マップタブで扱うマップと画像ファイル（キーは RAID_MAPS と同じ名前）
 const RAID_MAP_IMAGE_FILES = {
   'Customs':           'Customs.png',

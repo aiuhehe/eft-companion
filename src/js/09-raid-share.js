@@ -26,7 +26,7 @@ const _raidShareLabel = (obj, cat) => {
  * 進行中（ボード登録済み・未完了）のタスクから共有データ v1 を作る。全マップ分を一括。
  * 目標以外の個人データ・マップピンは含めない。値が無いキーは書き出さない。
  */
-function buildRaidShareData({ tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, activeMode, gameMode, uiLang, playerLevel }) {
+function buildRaidShareData({ tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, raidObjProgress, activeMode, gameMode, uiLang, playerLevel }) {
   const pinned = new Set(pinnedTaskIds || []);
   const completed = new Set(completedTaskIds || []);
   const customIds = new Set((customTasks || []).map(t => t.id));
@@ -50,14 +50,18 @@ function buildRaidShareData({ tasks, customTasks, pinnedTaskIds, completedTaskId
       const maps = normalizeRaidMaps(obj.maps);
       const key = raidObjKey(task.id, obj);
       const label = _raidShareLabel(obj, cat);
+      const count = Number(obj.count) > 0 ? Number(obj.count) : 1;
+      // 途中進捗（Issue #28）。進んでいれば残り数 remaining を付ける。必要数に達したら（アプリではチェックとは別でも）ボードからは消すので done
+      const progress = isProgressTargetObj(obj) ? Math.min(count, Number(raidObjProgress?.[task.id]?.[key]) || 0) : 0;
       const o = {
         id: key,
         cat,
         label,
-        count: Number(obj.count) > 0 ? Number(obj.count) : 1,
+        count,
         maps,
-        done: !!raidObjChecked?.[task.id]?.[key],
+        done: !!raidObjChecked?.[task.id]?.[key] || progress >= count,
       };
+      if (progress > 0 && progress < count) o.remaining = count - progress;
       if (obj.foundInRaid && (cat === 'bring' || cat === 'collect')) o.fir = true;
       // カスタムタスクの仮アイテムID（custom_item_…）はアプリ内でしか通用しないので送らない
       const itemId = obj.item?.id;

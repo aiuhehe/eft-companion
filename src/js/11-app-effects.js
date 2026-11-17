@@ -120,6 +120,12 @@
     catch {}
   }, [raidObjChecked]);
 
+  // 目標ごとの途中進捗の永続化（Issue #28）
+  useEffect(() => {
+    try { localStorage.setItem(modeKey('eft_raid_obj_progress_v1'), JSON.stringify(raidObjProgress)); }
+    catch {}
+  }, [raidObjProgress]);
+
   // マップタブ：選択マップ切替時に画像を自動読み込み
   useEffect(() => {
     if (activeTab !== 'maps') return;

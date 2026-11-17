@@ -24,7 +24,7 @@
 
 | ファイル | 内容 | 行数目安 |
 |---|---|---|
-| `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ一覧 `RAID_MAPS`・マップ名正規化 `normalizeRaidMapName`・目標チェックキー `raidObjKey`・目標分類 `classifyRaidObj`・マップ画像定数, GraphQLクエリ | ~290 |
+| `00-constants.js` | React destructuring, GUIDE_MAP, TRADER定数, マップ一覧 `RAID_MAPS`・マップ名正規化 `normalizeRaidMapName`・目標チェックキー `raidObjKey`・目標分類 `classifyRaidObj`・途中進捗の対象 `isProgressTargetObj`/`isProgressStepObj`・マップ画像定数, GraphQLクエリ | ~290 |
 | `01-api.js` | fetchGraphQL + json.tarkov.dev フォールバック変換 | ~410 |
 | `02-translations.js` | translateObjective, getObjTypeLabel | ~75 |
 | `03-storage.js` | loadState, saveState, 全データバックアップ（exportAllData/restoreAllData）, IndexedDB（差し替えマップ画像）, モードシステム（シーズン id `season_current` の移行 `migrateSeasonIds`・新シーズン開始 `startNewSeason`） | ~375 |
@@ -192,6 +192,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `eft_plan_v1` | プランアイテム `[{ id, type, ... }]` |
 | `eft_task_tabs_v1` | プロジェクトタブ `[{ id, name, color, goalTaskId }]` |
 | `eft_raid_obj_checked_v1` | 出撃準備タブの目標ごとのチェック状態 |
+| `eft_raid_obj_progress_v1` | 目標ごとの途中進捗 `{ [taskId]: { [raidObjKey]: 進んだ数 } }`（撃破・持ち込み・収集・Issue #28）。出撃準備タブ・タスク詳細・納品アイテム集計で共通。チェックとは別（必要数に達してもチェックは付かない）。旧 `eft_tool_v2.deliveryChecks` は起動後にここへ割り振って移す |
 | `eft_blackout_v1` | イベントタスクの独自完了フラグ（キー名は歴史的経緯・全イベント共通の入れ物）。旧グローバルキーは PvP へ引き継ぎ |
 | `eft_task_tags_v1` | 旧タグ機能（**廃止**・`eft_task_tabs_v1` への移行元としてのみ参照）|
 

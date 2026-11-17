@@ -311,11 +311,87 @@
         if (!map[key]) map[key] = { item: obj.item, count: 0, foundInRaid: false, entries: [] };
         map[key].count += obj.count;
         if (obj.foundInRaid) map[key].foundInRaid = true;
-        map[key].entries.push({ taskId: task.id, taskName: task.name, count: obj.count, objId: obj.id });
+        map[key].entries.push({ task, obj, taskId: task.id, taskName: task.name, count: obj.count, objId: obj.id });
       });
     });
     return Object.values(map).sort((a, b) => a.item.name.localeCompare(b.item.name, 'ja'));
   }, [pinnedTasks]);
+
+  // ── 目標ごとの途中進捗（Issue #28・eft_raid_obj_progress_v1）──
+  /** その目標の進んだ数（0〜必要数） */
+  const objProgressOf = (taskId, obj) => {
+    const n = Number(raidObjProgress[taskId]?.[raidObjKey(taskId, obj)]) || 0;
+    const max = Number(obj.count) > 0 ? Number(obj.count) : 1;
+    return Math.max(0, Math.min(max, n));
+  };
+  /**
+   * pairs = [{ task, obj }] の進捗を delta（+1 / −1）だけ動かす。複数あれば +1 は前から順に必要数まで埋め、−1 は後ろから減らす
+   * （納品アイテム集計・仲間の目標の合算した行のように、同じアイテム・撃破を複数のタスクが求めるとき用。1つならそのまま）
+   */
+  const stepObjProgress = (pairs, delta) => setRaidObjProgress(prev => {
+    // 撃破だけの行は、1回のキルで全部のタスクが進むので、全部を同じだけ動かす（必要数で頭打ち）
+    if (pairs.length > 1 && pairs.every(({ obj }) => classifyRaidObj(obj.type, obj.foundInRaid) === 'kill')) {
+      const out = { ...prev };
+      for (const { task, obj } of pairs) {
+        const k = raidObjKey(task.id, obj);
+        const max = Number(obj.count) > 0 ? Number(obj.count) : 1;
+        const next = Math.max(0, Math.min(max, (Number(out[task.id]?.[k]) || 0) + (delta > 0 ? 1 : -1)));
+        const tp = { ...(out[task.id] || {}) };
+        if (next === 0) delete tp[k]; else tp[k] = next;
+        if (Object.keys(tp).length === 0) delete out[task.id]; else out[task.id] = tp;
+      }
+      return out;
+    }
+    const list = delta > 0 ? pairs : [...pairs].reverse();
+    for (const { task, obj } of list) {
+      const k = raidObjKey(task.id, obj);
+      const max = Number(obj.count) > 0 ? Number(obj.count) : 1;
+      const cur = Math.max(0, Math.min(max, Number(prev[task.id]?.[k]) || 0));
+      const next = cur + (delta > 0 ? 1 : -1);
+      if (next < 0 || next > max) continue;
+      const tp = { ...(prev[task.id] || {}) };
+      if (next === 0) delete tp[k]; else tp[k] = next;
+      const out = { ...prev };
+      if (Object.keys(tp).length === 0) delete out[task.id]; else out[task.id] = tp;
+      return out;
+    }
+    return prev;
+  });
+  /** タスクの進捗を全部消す（「チェックをリセット」と一緒に使う） */
+  const resetTaskObjProgress = (taskId) => setRaidObjProgress(prev => {
+    if (!prev[taskId]) return prev;
+    const n = { ...prev }; delete n[taskId]; return n;
+  });
+
+  // 旧・納品済み数（deliveryChecks・アイテムごとの合計）を目標ごとの進捗へ一度だけ移す（Issue #28）。
+  // 進行中（ボード登録済み・未完了）のタスクの納品目標（giveItem）に、ボードの並び順で必要数まで割り振る。割り振れない分は捨てる
+  useEffect(() => {
+    if (!deliveryChecks || Object.keys(deliveryChecks).length === 0) return;
+    if (!apiData.tasks || apiData.tasks.length === 0) return; // タスクが読めるまで待つ
+    const tasks = pinnedTaskIds
+      .filter(id => !completedTaskIds.includes(id))
+      .map(id => apiData.tasks.find(t => t.id === id)).filter(Boolean);
+    setRaidObjProgress(prev => {
+      const out = { ...prev };
+      for (const [itemId, raw] of Object.entries(deliveryChecks)) {
+        let left = Number(raw) || 0;
+        for (const task of tasks) {
+          for (const obj of (task.objectives || [])) {
+            if (left <= 0) break;
+            if (obj.type !== 'giveItem' || obj.item?.id !== itemId || !obj.count) continue;
+            const k = raidObjKey(task.id, obj);
+            const cur = Number(out[task.id]?.[k]) || 0;
+            const add = Math.min(left, Math.max(0, obj.count - cur));
+            if (add <= 0) continue;
+            out[task.id] = { ...(out[task.id] || {}), [k]: cur + add };
+            left -= add;
+          }
+        }
+      }
+      return out;
+    });
+    setDeliveryChecks({});
+  }, [deliveryChecks, apiData.tasks, pinnedTaskIds, completedTaskIds]);
 
   const togglePin = (taskId) => setPinnedTaskIds(prev =>
     prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
