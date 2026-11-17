@@ -590,6 +590,8 @@
                                           {obj.count > 1 && <span style={{ color: 'var(--accent)', marginLeft: 6 }}>×{obj.count}</span>}
                                           {obj.foundInRaid && <span style={{ color: 'var(--state-ok-text)', fontSize: 11, marginLeft: 6 }}>[FIR]</span>}
                                         </span>
+                                        {/* 途中進捗の − / +（Issue #28）。進行中（ボード登録済み・未完了）のタスクの撃破・持ち込み・収集で必要数 2 以上 */}
+                                        {pinnedTaskIds.includes(task.id) && !completedTaskIds.includes(task.id) && isProgressStepObj(obj) && renderObjProgress([{ task, obj }], { size: 'sm' })}
                                       </div>
                                     );
                                   })}
@@ -949,19 +951,19 @@
                                   <Icon name="package" size={12} color="var(--accent)" /> 納品アイテム集計
                                 </div>
                                 {pinnedDeliveryItems.map(({ item, count, foundInRaid, entries }) => {
-                                  const checkKey = `${item.id}`;
-                                  const delivered = Number(deliveryChecks[checkKey]) || 0;
+                                  // 納品済み数 = 各タスクの納品目標の途中進捗の合計（Issue #28）。− / + は目標へ前から順に割り振る
+                                  const delivered = entries.reduce((s, e) => s + objProgressOf(e.taskId, e.obj), 0);
                                   const allDone = delivered >= count;
                                   return (
-                                    <Tooltip key={item.id} text={entries.map(e => `${e.taskName} ×${e.count}`).join('\n')}>
+                                    <Tooltip key={item.id} text={entries.map(e => `${e.taskName} ${objProgressOf(e.taskId, e.obj)}/${e.count}`).join('\n')}>
                                       <span className={`delivery-chip${allDone ? ' is-checked' : ''}`}>
                                         {item.iconLink && <img src={item.iconLink} alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} onError={e => { e.target.style.display='none'; }} />}
                                         <span style={{ color: allDone ? 'var(--state-ok-text)' : 'var(--text-primary)' }}>{item.name}</span>
                                         {foundInRaid && <span style={{ color: 'var(--warn)', fontSize: 10 }}>[FIR]</span>}
                                         <span style={{ color: 'var(--accent)' }}>×{count}</span>
-                                        <button onClick={() => setDeliveryCount(checkKey, -1, count)} className="btn btn-sm" style={{ padding: '0 5px', minWidth: 22, lineHeight: 1, fontSize: 13 }}>−</button>
+                                        <button type="button" onClick={() => stepObjProgress(entries, -1)} disabled={delivered <= 0} className="obj-progress-btn" aria-label="1つ減らす">−</button>
                                         <span style={{ fontSize: 12, minWidth: 16, textAlign: 'center', color: allDone ? 'var(--state-ok-text)' : 'var(--text-primary)' }}>{delivered}</span>
-                                        <button onClick={() => setDeliveryCount(checkKey, 1, count)} className="btn btn-sm" style={{ padding: '0 5px', minWidth: 22, lineHeight: 1, fontSize: 13 }}>+</button>
+                                        <button type="button" onClick={() => stepObjProgress(entries, 1)} disabled={allDone} className="obj-progress-btn" aria-label="1つ増やす">＋</button>
                                       </span>
                                     </Tooltip>
                                   );

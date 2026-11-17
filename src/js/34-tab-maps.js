@@ -540,9 +540,10 @@
                       <Icon name="link" size={12} color="var(--accent)" /> Wiki
                     </a>
                   )}
-                  {raidObjChecked[t.id] && Object.keys(raidObjChecked[t.id]).length > 0 && (
+                  {((raidObjChecked[t.id] && Object.keys(raidObjChecked[t.id]).length > 0) || raidObjProgress[t.id]) && (
                     <button className="btn btn-gray btn-sm"
-                      onClick={() => setRaidObjChecked(prev => { const n = { ...prev }; delete n[t.id]; return n; })}>
+                      onClick={() => { setRaidObjChecked(prev => { const n = { ...prev }; delete n[t.id]; return n; }); resetTaskObjProgress(t.id); }}
+                      title="このタスクの目標チェックと途中進捗（− / + の数）を消します">
                       チェックをリセット
                     </button>
                   )}

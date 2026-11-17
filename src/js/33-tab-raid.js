@@ -197,6 +197,10 @@
             </button>
           );
           const taskLine = fb ? fbTaskRefs(fb) : <>{taskLabel}{traderBadge}</>;
+          // 途中進捗の − / +（Issue #28・撃破・持ち込み・収集で必要数 2 以上）。仲間の目標の合算した行では自分の分だけを動かす
+          const progressCtl = fb
+            ? (fb.mine.some(x => isProgressStepObj(x.obj)) ? renderObjProgress(fb.mine, { size: 'sm', title: '自分の分の途中まで進んだ数（− / + で入力。必要数に達するとボードの自分の色が消えます）' }) : null)
+            : (isProgressStepObj(obj) ? renderObjProgress([{ task, obj }]) : null);
 
           if (obj.type === 'findItem' || obj.type === 'giveItem' || obj.type === 'plantItem') {
             const catName = obj.itemCategory?.name;
@@ -222,7 +226,8 @@
                   {obj.foundInRaid && (
                     <span style={{ fontSize: 10, color: 'var(--warn-text)', background: 'var(--warn-bg)', border: '1px solid var(--warn)', padding: '1px 5px', borderRadius: 3 }}>FIR</span>
                   )}
-                  {fb ? fbMarkers(fb) : <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)' }}>×{obj.count}</span>}
+                  {progressCtl}
+                  {fb ? fbMarkers(fb) : !progressCtl && <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)' }}>×{obj.count}</span>}
                 </div>
               </div>
             );
@@ -238,7 +243,8 @@
                 </div>
                 {pinSide}
                 <span style={{ fontSize: 10, color: 'var(--info)', background: 'var(--info-bg)', padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>クエストアイテム</span>
-                {fb ? fbMarkers(fb) : <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)', flexShrink: 0 }}>×{obj.count}</span>}
+                {progressCtl}
+                {fb ? fbMarkers(fb) : !progressCtl && <span style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)', flexShrink: 0 }}>×{obj.count}</span>}
               </div>
             );
           }
@@ -283,6 +289,7 @@
                   <div style={{ display: 'flex', gap: 6, marginTop: 2, flexWrap: 'wrap', alignItems: 'center' }}>{taskLine}</div>
                 </div>
                 {pinSide}
+                {progressCtl}
                 {fb && fbMarkers(fb)}
               </div>
             );
@@ -1581,9 +1588,10 @@
                           <Icon name="link" size={12} color="var(--accent)" /> Wiki
                         </a>
                       )}
-                      {raidObjChecked[t.id] && Object.keys(raidObjChecked[t.id]).length > 0 && (
+                      {((raidObjChecked[t.id] && Object.keys(raidObjChecked[t.id]).length > 0) || raidObjProgress[t.id]) && (
                         <button className="btn btn-gray btn-sm"
-                          onClick={() => setRaidObjChecked(prev => { const n = { ...prev }; delete n[t.id]; return n; })}>
+                          onClick={() => { setRaidObjChecked(prev => { const n = { ...prev }; delete n[t.id]; return n; }); resetTaskObjProgress(t.id); }}
+                          title="このタスクの目標チェックと途中進捗（− / + の数）を消します">
                           チェックをリセット
                         </button>
                       )}

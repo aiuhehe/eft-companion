@@ -92,15 +92,17 @@ function _raidBuildGoals(entries) {
     }
     g.entries.push({ userId: member.userId, colorIdx: member.colorIdx, taskId: task.id, taskName: task.name, trader: task.trader || '', custom: !!task.custom, objId: o.id });
     g.required.add(o.count);
+    // 残り数。途中進捗（Issue #28）があれば remaining、無ければ必要数
+    const left = Number.isFinite(o.remaining) && o.remaining >= 0 ? o.remaining : o.count;
     const mine = g.members.find(m => m.userId === member.userId);
     if (!mine) {
-      g.members.push({ userId: member.userId, colorIdx: member.colorIdx, remaining: o.count });
+      g.members.push({ userId: member.userId, colorIdx: member.colorIdx, remaining: left });
     } else if (o.cat === 'kill') {
       // 同じ人の複数のタスクが同じ撃破を求めていても、1回のキルで両方が進むので大きいほうだけ
-      mine.remaining = Math.max(mine.remaining, o.count);
+      mine.remaining = Math.max(mine.remaining, left);
     } else {
       // アイテムはタスクごとに納品するので、同じ人の分は足す
-      mine.remaining += o.count;
+      mine.remaining += left;
     }
   }
   return [...goals.values()].map(({ required, ...g }) => {

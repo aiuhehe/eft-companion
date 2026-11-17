@@ -416,15 +416,9 @@ function App() {
   const [pinnedTaskIds, setPinnedTaskIds] = useState(saved.pinnedTaskIds || []);   // 進行中タスク
   const [mapTaskIds, setMapTaskIds] = useState(saved.mapTaskIds || []);             // ピン止め（出撃マップ用）
   const [completedTaskIds, setCompletedTaskIds] = useState(saved.completedTaskIds || []);
-  const [deliveryChecks, setDeliveryChecks] = useState(saved.deliveryChecks || {}); // 納品アイテム納品済み数 { itemId: number }
-  const setDeliveryCount = (key, delta, max) => setDeliveryChecks(prev => {
-    const n = { ...prev };
-    const current = Number(n[key]) || 0;
-    const next = Math.max(0, Math.min(max, current + delta));
-    if (next === 0) delete n[key];
-    else n[key] = next;
-    return n;
-  });
+  // 旧・納品アイテム納品済み数 { itemId: number }。目標ごとの進捗（raidObjProgress）へ一本化済み（Issue #28）。
+  // 残っていれば起動後に進行中タスクの納品目標へ割り振って空にする（13-app-memos.js）。移行元としてだけ読む
+  const [deliveryChecks, setDeliveryChecks] = useState(saved.deliveryChecks || {});
   const [recentlyUnlockedTaskIds, setRecentlyUnlockedTaskIds] = useState([]);
   // wikiPanels: { [url]: { open, loading, blobUrl, error, title } } — タスクごとに独立
   const [wikiPanels, setWikiPanels] = useState({});
@@ -485,6 +479,12 @@ function App() {
   const [raidDetailTask, setRaidDetailTask] = useState(null);
   const [raidObjChecked, setRaidObjChecked] = useState(() => {
     try { return JSON.parse(localStorage.getItem(modeKey('eft_raid_obj_checked_v1')) || '{}'); }
+    catch { return {}; }
+  });
+  // 目標ごとの途中進捗（Issue #28）{ [taskId]: { [raidObjKey]: 進んだ数 } }。チェック（raidObjChecked）とは別に持つ。
+  // 納品アイテム集計（タスク検索の進行タスクボード）の納品済み数もここの合計（旧 deliveryChecks は起動後に割り振って移す）
+  const [raidObjProgress, setRaidObjProgress] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(modeKey('eft_raid_obj_progress_v1')) || '{}'); }
     catch { return {}; }
   });
 

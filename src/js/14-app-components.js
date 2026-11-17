@@ -1192,13 +1192,35 @@
     );
   };
 
+  // ================== 目標の途中進捗の − / + （Issue #28）==================
+  // pairs = [{ task, obj }]（1つなら普通の目標。複数なら合算した行で、+ は前から順に、− は後ろから割り振る）。
+  // 表示は「進んだ数 / 必要数」。必要数に達しても目標のチェックは付けず、数の色だけ変える（チェックとは別の状態）
+  const renderObjProgress = (pairs, { size = 'md', title } = {}) => {
+    if (!pairs || pairs.length === 0) return null;
+    const cnt = (obj) => Number(obj.count) > 0 ? Number(obj.count) : 1;
+    // 撃破だけの行は合計しない（1回のキルで全部のタスクが進む）。いちばん多い必要数・進んだ数で出す
+    const allKill = pairs.every(({ obj }) => classifyRaidObj(obj.type, obj.foundInRaid) === 'kill');
+    const need = allKill ? Math.max(...pairs.map(({ obj }) => cnt(obj))) : pairs.reduce((s, { obj }) => s + cnt(obj), 0);
+    const done = allKill ? Math.max(...pairs.map(({ task, obj }) => objProgressOf(task.id, obj)))
+      : pairs.reduce((s, { task, obj }) => s + objProgressOf(task.id, obj), 0);
+    const full = done >= need;
+    return (
+      <span className={`obj-progress${size === 'sm' ? ' is-sm' : ''}${full ? ' is-full' : ''}`} onClick={e => e.stopPropagation()}
+        title={title || '途中まで進んだ数（− / + で入力。必要数に達してもチェックは付きません）'}>
+        <button type="button" className="obj-progress-btn" disabled={done <= 0} onClick={() => stepObjProgress(pairs, -1)} aria-label="1つ減らす">−</button>
+        <span className="obj-progress-num">{done}<span className="obj-progress-need">/{need}</span></span>
+        <button type="button" className="obj-progress-btn" disabled={full} onClick={() => stepObjProgress(pairs, 1)} aria-label="1つ増やす">＋</button>
+      </span>
+    );
+  };
+
   // ================== DISCORD 出撃共有の自動送信（09-discord-link.js・§11.2）==================
   // 共有データの元（進行タスク・目標チェック・タスク完了など）が変わったら30秒後に送る。ヘッダーの即時同期ボタン・設定タブと共有
   // 過去のシーズンを表示しているときは送らない（null＝自動送信・即時同期なし・Issue #57）
   const raidShareData = useMemo(() => isPastSeasonMode(activeMode) ? null : buildRaidShareData({
-    tasks: apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked,
+    tasks: apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, raidObjProgress,
     activeMode, gameMode, uiLang, playerLevel,
-  }), [apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, gameMode, uiLang, playerLevel]);
+  }), [apiData.tasks, customTasks, pinnedTaskIds, completedTaskIds, raidObjChecked, raidObjProgress, gameMode, uiLang, playerLevel]);
   const discordSync = useDiscordSync(raidShareData, apiData.tasks.length > 0);
   // 仲間の目標（09-friend-board.js・§11.4）。出撃準備タブを表示している間だけ30秒ごとに読み直す。
   // 参加中のボードを自動で開く。開いたボードを最初に読めたとき、Discord のボードでマップが選ばれていれば、
