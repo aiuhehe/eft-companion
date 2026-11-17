@@ -63,6 +63,11 @@
           extract: '脱出',
           locate:  '調査・特定',
         };
+        // 自分のピンの番号（「ピン登録済み」の一覧と同じ順・1から）。地図のピンと一覧のボタンに同じ番号を出す
+        const pinNumById = {};
+        let pinNumSeq = 0;
+        CAT_ORDER.forEach(cat => pinned.filter(x => getCat(x.obj) === cat).forEach(({ obj }) =>
+          (pinsByObjId[obj.id] || []).forEach(p => { pinNumById[p.id] = ++pinNumSeq; })));
 
         // ドラッグ・パン
         const clpV = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -696,14 +701,12 @@
                       const found = tasksForMap.find(x => x.obj.id === pin.objectiveId);
                       if (!found) return null;
                       const { task, obj } = found;
-                      const pinsForObj = pinsByObjId[pin.objectiveId] || [];
-                      const pinIdx = pinsForObj.findIndex(p => p.id === pin.id);
                       return (
                         <MapPinMarker key={pin.id}
                           leftPct={pin.x / meta.width * 100}
                           topPct={pin.y / meta.height * 100}
                           obj={obj} task={task} cat={getCat(obj)} pin={pin}
-                          pinIndex={pinsForObj.length > 1 ? pinIdx + 1 : null}
+                          pinNum={pinNumById[pin.id]}
                           forceOpen={mapsHighlightedPinId === pin.id}
                           onClose={mapsHighlightedPinId === pin.id ? () => setMapsHighlightedPinId(null) : undefined}
                           onRemove={() => removeTaskPin(pin.id)}
@@ -864,7 +867,8 @@
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}
                                 title="地図上のこのピンを開きます（再配置・削除）"
                                 onClick={() => focusPin(pin.id)}>
-                                <Icon name="map-pin" size={11} color="var(--accent-on)" /> 置きなおし{pinsForObj.length > 1 ? ` ${pi + 1}` : ''}
+                                <Icon name="map-pin" size={11} color="var(--accent-on)" /> 置きなおし
+                                <span className="map-pin-num is-inline">{pinNumById[pin.id]}</span>
                               </button>
                             ))}
                             <button className="btn btn-sm btn-gray"
@@ -899,7 +903,8 @@
                                   {/* ピン操作行 */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6,
                                     fontSize: 11, color: 'var(--text-secondary)' }}>
-                                    <Icon name="map-pin" size={11} color={CAT_COLOR[getCat(obj)] || 'var(--accent)'} />
+                                    <span className="map-pin-num is-inline" style={{ borderColor: CAT_COLOR[getCat(obj)] || 'var(--accent)' }}
+                                      title="地図上のピンの番号">{pinNumById[pin.id]}</span>
                                     <span style={{ minWidth: 28, color: 'var(--text-dim)' }}>
                                       スポーン{pi + 1}
                                     </span>

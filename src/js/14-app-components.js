@@ -733,7 +733,7 @@
   );
 
   // forceOpen: 吹き出しを開いた状態で出す（「置きなおし」ボタン・出撃準備タブの「ピンを見る」）。onClose は吹き出しを閉じたとき
-  const MapPinMarker = ({ leftPct, topPct, obj, task, cat, pin, onRemove, onReposition, forceOpen, onClose }) => {
+  const MapPinMarker = ({ leftPct, topPct, obj, task, cat, pin, pinNum, onRemove, onReposition, forceOpen, onClose }) => {
     const [open, setOpen] = React.useState(false);
     const pinRef = React.useRef(null);
 
@@ -768,6 +768,9 @@
         )}
         <Icon name={CAT_ICON[cat] || 'map-pin'} size={20}
           color={open ? '#fff' : (CAT_COLOR[cat] || 'var(--state-pin)')} />
+        {pinNum != null && (
+          <span className="map-pin-num" style={{ borderColor: CAT_COLOR[cat] || 'var(--state-pin)' }}>{pinNum}</span>
+        )}
         {open && (
           <div className="map-pin-bubble" onClick={e => e.stopPropagation()}>
             <div className="map-pin-bubble-task">{task.name}</div>
