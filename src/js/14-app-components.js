@@ -649,9 +649,15 @@
     || (obj.itemCategory?.name ? `${obj.itemCategory.name} カテゴリ` : null)
     || obj.target || obj.description || '';
 
-  // ピンの requiredItems 要素を表示用に解決（タスク品は登録データの最新の名前・画像を使う）
+  // ピンの requiredItems 要素を表示用に解決（タスク品は登録データの最新の名前・画像を使う）。
+  // 仲間のピンのアイテム（Issue #36）は画像を持たないので、API のアイテムは自分の言語の名前と画像を引く
+  const pinApiItemById = useMemo(() => new Map((apiData.items || []).map(i => [i.id, i])), [apiData.items]);
   const resolvePinItem = (item) => {
-    if (!item?.custom) return item;
+    if (!item?.custom) {
+      if (!item || item.iconLink) return item;
+      const a = pinApiItemById.get(item.id);
+      return a ? { ...item, name: a.name, shortName: a.shortName, iconLink: a.iconLink } : item;
+    }
     const c = customItems.find(x => x.id === item.id);
     return c ? { ...item, ...c, custom: true } : item;
   };
@@ -696,6 +702,36 @@
     );
   };
 
+  // 仲間のピンの中身（色の四角・名前・メモ・必要な鍵を人ごとに）。マップタブの吹き出し・出撃準備の地図の右の一覧で共通（Issue #36）
+  const FriendPinNotes = ({ friendPins }) => {
+    if (!friendPins?.length) return null;
+    return (
+      <div className="friend-pin-notes">
+        {friendPins.map(f => (
+          <div key={f.userId + '/' + f.pin.id} className="friend-pin-note">
+            <MemberMarker colorIdx={f.colorIdx} size={8} title={friendPeople.nameOf(f.userId)} />
+            <span className="friend-pin-note-name">{friendPeople.nameOf(f.userId) || '仲間'}</span>
+            {f.pin.memo && <span className="friend-pin-note-memo">{f.pin.memo}</span>}
+            {(f.pin.requiredItems || []).map(it => <PinItemChip key={it.id} item={it} size="sm" />)}
+          </div>
+        ))}
+      </div>
+    );
+  };
+  // 仲間だけのピンの操作（自分のピンとして保存・隠す）
+  const FriendPinActions = ({ pin, onDone }) => (
+    <div className="friend-pin-actions">
+      <button className="btn btn-sm btn-yellow" title="位置・メモ・必要な鍵を自分のピンにコピーします（ボードが終わっても残ります）"
+        onClick={e => { e.stopPropagation(); saveFriendPinAsMine(pin); onDone?.(); }}>
+        <Icon name="download" size={10} color="currentColor" /> 自分のピンとして保存
+      </button>
+      <button className="btn btn-sm btn-gray" title="このピンを自分の画面でだけ隠します（マップタブの「隠したピンを元に戻す」で戻せます）"
+        onClick={e => { e.stopPropagation(); hideFriendPin(pin); onDone?.(); }}>
+        <Icon name="eye-off" size={10} color="currentColor" /> 隠す
+      </button>
+    </div>
+  );
+
   const MapPinMarker = ({ leftPct, topPct, obj, task, cat, pin, onRemove, onReposition, forceOpen }) => {
     const [open, setOpen] = React.useState(false);
     const pinRef = React.useRef(null);
@@ -713,12 +749,12 @@
     }, [open]);
 
     return (
-      <div ref={pinRef}
+      <div ref={pinRef} data-map-pin=""
         style={{ position: 'absolute', left: `${leftPct}%`, top: `${topPct}%`,
           transform: 'translate(-50%, -100%)', cursor: 'pointer', zIndex: open ? 5 : 2 }}
         onClick={e => { e.stopPropagation(); setOpen(o => !o); }}>
-        <Icon name={CAT_ICON[cat] || 'map-pin'} size={20}
-          color={open ? '#fff' : (CAT_COLOR[cat] || 'var(--state-pin)')} />
+        <Icon name={CAT_ICON[cat] || 'map-pin'} size={20} className={pin?.friendOnly ? 'map-pin-friend' : ''}
+          color={open ? '#fff' : pin?.friendOnly ? memberColor(pin.friendPins[0]?.colorIdx) : (CAT_COLOR[cat] || 'var(--state-pin)')} />
         {open && (
           <div className="map-pin-bubble" onClick={e => e.stopPropagation()}>
             <div className="map-pin-bubble-task">{task.name}</div>
@@ -738,6 +774,8 @@
             {pin?.memoImages && pin.memoImages.length > 0 && (
               <div style={{ marginTop: 4 }}><PinImageChips images={pin.memoImages} /></div>
             )}
+            <FriendPinNotes friendPins={pin?.friendPins} />
+            {pin?.friendOnly && <FriendPinActions pin={pin} onDone={() => setOpen(false)} />}
             {(onRemove || onReposition) && (
               <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
                 {onReposition && (
@@ -976,17 +1014,19 @@
               {sortedPins.map(({ pin, cat, checked }, idx) => {
                 const hl = highlighted === pin.id;
                 const col = checked ? 'var(--text-dim)' : (CAT_COLOR[cat] || 'var(--accent)');
+                // 仲間だけのピンは点線の枠（持ち主の色）で、自分のピンと見分ける（Issue #36）
+                const friendCol = pin.friendOnly ? memberColor(pin.friendPins[0]?.colorIdx) : null;
                 return (
-                  <div key={pin.id} style={{
+                  <div key={pin.id} title={pin.friendOnly ? `仲間のピン: ${pin.friendPins.map(f => friendPeople.nameOf(f.userId)).join('・')}` : undefined} style={{
                     opacity: checked && !hl ? 0.7 : 1,
                     position: 'absolute',
                     left: `${pin.x / meta.width  * 100}%`,
                     top:  `${pin.y / meta.height * 100}%`,
                     transform: 'translate(-50%, -50%)',
                     width: 22, height: 22, borderRadius: '50%',
-                    background: hl ? '#fff' : col,
-                    border: `2px solid ${hl ? col : 'rgba(0,0,0,0.55)'}`,
-                    color: hl ? col : '#000',
+                    background: hl ? '#fff' : friendCol ? 'var(--bg-secondary)' : col,
+                    border: friendCol ? `2px dashed ${friendCol}` : `2px solid ${hl ? col : 'rgba(0,0,0,0.55)'}`,
+                    color: hl ? col : friendCol ? 'var(--text-primary)' : '#000',
                     fontSize: 11, fontWeight: 'bold',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     zIndex: hl ? 3 : checked ? 1 : 2, boxShadow: '0 1px 5px rgba(0,0,0,0.65)',
@@ -994,7 +1034,7 @@
                   }}
                     onMouseEnter={() => { setHighlighted(pin.id); recalcLines(); }}
                     onMouseLeave={() => setHighlighted(null)}>
-                    {checked ? <Icon name="check" size={12} color={hl ? col : '#000'} /> : idx + 1}
+                    {checked ? <Icon name="check" size={12} color={hl ? col : friendCol ? 'var(--text-primary)' : '#000'} /> : idx + 1}
                   </div>
                 );
               })}
@@ -1098,6 +1138,8 @@
                     {pin.memoImages && pin.memoImages.length > 0 && (
                       <div style={{ marginTop: 3 }}><PinImageChips images={pin.memoImages} size="sm" /></div>
                     )}
+                    <FriendPinNotes friendPins={pin.friendPins} />
+                    {pin.friendOnly && <FriendPinActions pin={pin} />}
                   </div>
                   <Icon name={CAT_ICON[cat] || 'map-pin'} size={12} color={col} style={{ marginTop: 3, flexShrink: 0 }} />
                 </div>
@@ -1145,10 +1187,55 @@
   // 仲間の目標（09-friend-board.js・§11.4）。出撃準備タブを表示している間だけ30秒ごとに読み直す。
   // 参加中のボードを自動で開く。開いたボードを最初に読めたとき、Discord のボードでマップが選ばれていれば、
   // [地図で見る] のリンクで開いたときか、まだマップを選んでいないときだけそのマップを選ぶ（自分で選んだマップは上書きしない）
-  const friendBoard = useFriendBoard(discordSync, activeTab === 'raid', (board, source) => {
+  const friendBoard = useFriendBoard(discordSync, activeTab === 'raid' || activeTab === 'maps', (board, source) => {
     if (board.selectedMap && RAID_MAPS.includes(board.selectedMap) && (source === 'hash' || !raidMap)) setRaidMap(board.selectedMap);
   });
   // ボードの参加者（参加者のボタンで外した人を除き、自分の分は手元の共有データに差し替え）。目標一覧（FriendBoardView）と地図の右の一覧（色の四角）で使う
   const friendPeople = useFriendBoardPeople(friendBoard.detail, raidShareData, discordSync.link.userName, friendBoard.hiddenMembers);
+
+  // ── マップピンの持ち寄り（09-friend-pins.js・§11.5・Issue #36）──
+  // 連携中は自分のピン一式が変わったら10秒後に送る。ボードを開いていれば参加者のピンを読み、マップタブ・出撃準備タブの地図に重ねる
+  const pinsShareData = useMemo(() => buildPinsShareData(taskPins, mapImages, customItems), [taskPins, mapImages, customItems]);
+  const pinSync = useDiscordPinSync(discordSync, pinsShareData);
+  const friendPins = useFriendPins(discordSync, friendBoard);
+  const hiddenFriendPins = useHiddenFriendPins();
+  // 仲間のピン（自分と、参加者のボタンで外した人を除く）
+  const friendPinMembers = useMemo(
+    () => friendPins.members.filter(m => m.userId !== friendPeople.selfId && !friendBoard.hiddenMembers.has(m.userId)),
+    [friendPins.members, friendPeople.selfId, friendBoard.hiddenMembers]);
+  /** そのマップの自分のピン（selfPins）に仲間のピンを重ねてまとめた表示用のピン（仲間のピンが無ければ selfPins のまま） */
+  const mergePinsForMap = useCallback((mapName, selfPins) =>
+    friendPinMembers.length ? mergeMapPins(mapName, mapImages[mapName], selfPins, friendPinMembers, hiddenFriendPins.hidden) : selfPins,
+  [friendPinMembers, mapImages, hiddenFriendPins.hidden]);
+  /** 仲間だけのピンを自分のピンにコピーする（位置・メモ・必要な鍵。登録タスク品は同じ名前が無ければ画像なしで登録） */
+  const saveFriendPinAsMine = useCallback((pin) => {
+    const memos = [...new Set(pin.friendPins.map(f => String(f.pin.memo || '').trim()).filter(Boolean))];
+    const items = [];
+    const known = [...customItems];
+    for (const f of pin.friendPins) {
+      for (const it of f.pin.requiredItems || []) {
+        if (it.custom) {
+          let c = known.find(x => x.name === it.name);
+          if (!c) { c = addCustomItem({ name: it.name, shortName: it.shortName || '', iconLink: '' }); known.push(c); }
+          if (!items.some(i => i.id === c.id)) items.push({ id: c.id, name: c.name, shortName: c.shortName || '', custom: true });
+        } else if (!items.some(i => i.id === it.id)) {
+          const a = pinApiItemById.get(it.id);
+          items.push({ id: it.id, name: a?.name || it.name, shortName: a?.shortName || it.shortName || '', iconLink: a?.iconLink || '' });
+        }
+      }
+    }
+    const newPin = { id: `pin_${pin.objectiveId}_${Date.now()}`, mapName: pin.mapName, taskId: pin.taskId, objectiveId: pin.objectiveId,
+      x: Math.round(pin.x), y: Math.round(pin.y) };
+    if (memos.length) newPin.memo = memos.join(' / ');
+    if (items.length) newPin.requiredItems = items;
+    setTaskPins(prev => {
+      const next = [...prev, newPin];
+      try { localStorage.setItem(TASK_PINS_LS_KEY, JSON.stringify(next)); }
+      catch { alert('ピンの保存に失敗しました（localStorage の容量不足の可能性があります）'); return prev; }
+      return next;
+    });
+  }, [customItems, addCustomItem, pinApiItemById]);
+  /** まとめたピンに入っている仲間のピンを、自分の画面でだけ隠す */
+  const hideFriendPin = useCallback((pin) => hiddenFriendPins.hide(pin.friendPins.map(f => friendPinKey(f.userId, f.pin.id))), [hiddenFriendPins.hide]);
 
   // ================== RENDER ==================

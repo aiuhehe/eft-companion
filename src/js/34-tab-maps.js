@@ -24,6 +24,11 @@
           (pinsByObjId[pin.objectiveId] = pinsByObjId[pin.objectiveId] || []).push(pin);
         });
         const pinnedObjIds = new Set(Object.keys(pinsByObjId));
+        // 仲間のピン（§11.5・Issue #36）。ボードを開いているとき、同じ目標の近い位置のピンを1つにまとめて重ねる。
+        // 仲間だけのピンは、ボードの誰か（自分を含む）にまだ残っている目標の分だけ出す（自分の進行タスクでなくてもよい）
+        const shownPins = mergePinsForMap(selected, pinnedForMap);
+        const anyTaskById = new Map(allTasks.map(t => [t.id, t]));
+        const friendOnlyCount = shownPins.filter(p => p.friendOnly).length;
 
         const unpinned = tasksForMap.filter(({ task, obj }) => {
           if (pinnedObjIds.has(obj.id)) return false;
@@ -64,6 +69,8 @@
         const handleInnerMouseDown = (e) => {
           if (isPlacing || isRepositioning || isPendingCoord) return;
           if (e.button !== 0) return;
+          // ピン・吹き出しの上で押したときはドラッグを始めない（state が変わると MapPinMarker が作り直され、クリックが届かなくなるため）
+          if (e.target.closest?.('[data-map-pin]')) return;
           e.preventDefault();
           const { panX, panY } = mapsViewportRef.current;
           mapsDragRef.current = { startX: e.clientX, startY: e.clientY, startPanX: panX, startPanY: panY, hasMoved: false };
@@ -661,7 +668,18 @@
 
                   {/* 登録済みピン — ピン配置中はクリック不可 */}
                   <div style={{ pointerEvents: (isPlacing || isRepositioning || isPendingCoord) ? 'none' : undefined }}>
-                    {pinnedForMap.map(pin => {
+                    {shownPins.map(pin => {
+                      if (pin.friendOnly) {
+                        const task = anyTaskById.get(pin.taskId);
+                        const obj = task && (task.objectives || []).find(o => o.id === pin.objectiveId);
+                        if (!obj || friendPeople.holdersOf(task.id, raidObjKey(task.id, obj)).length === 0) return null;
+                        return (
+                          <MapPinMarker key={pin.id}
+                            leftPct={pin.x / meta.width * 100}
+                            topPct={pin.y / meta.height * 100}
+                            obj={obj} task={task} cat={getCat(obj)} pin={pin} />
+                        );
+                      }
                       const found = tasksForMap.find(x => x.obj.id === pin.objectiveId);
                       if (!found) return null;
                       const { task, obj } = found;
@@ -700,6 +718,24 @@
               <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-dim)', fontSize: 13,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <Icon name="refresh" size={14} color="var(--text-dim)" /> 読み込み中...
+              </div>
+            )}
+
+            {/* 仲間のピン（Discord のボードを開いているとき・Issue #36）と、自分のピンの送信エラー */}
+            {(friendPinMembers.length > 0 || hiddenFriendPins.hidden.size > 0 || pinSync.pinsMsg) && (
+              <div className="friend-pin-info">
+                {friendPinMembers.length > 0 && (
+                  <span>
+                    <Icon name="map-pin" size={11} color="var(--text-dim)" />
+                    {' '}メンバーの色のアイコンは同じボードの仲間のピンです{friendOnlyCount ? `（このマップ ${friendOnlyCount}件）` : ''}。押すと「自分のピンとして保存」「隠す」ができます
+                  </span>
+                )}
+                {hiddenFriendPins.hidden.size > 0 && (
+                  <button type="button" className="map-image-replace-link" onClick={hiddenFriendPins.unhideAll}>
+                    隠したピン {hiddenFriendPins.hidden.size}件を元に戻す
+                  </button>
+                )}
+                <DiscordSyncMsg msg={pinSync.pinsMsg} style={{ marginLeft: 0 }} />
               </div>
             )}
 
@@ -905,6 +941,9 @@
                                         <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 3,
                                           display: 'flex', alignItems: 'center', gap: 3 }}>
                                           <Icon name="pencil" size={9} color="var(--text-dim)" /> メモ（場所の詳細など）
+                                          {discordSync.link.token && (
+                                            <span style={{ marginLeft: 'auto' }}>Discord の仲間に見せるのはメモの先頭{PINS_MAX_MEMO}字と必要アイテム{PINS_MAX_ITEMS}件まで（画像は送りません）</span>
+                                          )}
                                         </div>
                                         <input
                                           type="text"

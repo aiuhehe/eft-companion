@@ -117,7 +117,7 @@ function useFriendBoard(discord, active, onFirstLoad) {
   }, [openBoard, updateLink]);
 
   const authLost = () => {
-    updateLink({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined });
+    updateLink({ token: undefined, userName: undefined, linkedAt: undefined, lastSyncAt: undefined, lastSentAt: undefined, lastShareHash: undefined, lastPinsHash: undefined, lastPinsSentAt: undefined });
     setError({ kind: 'error', text: 'Discord 連携が解除されています。設定タブでもう一度連携してください' });
   };
 

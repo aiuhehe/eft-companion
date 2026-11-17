@@ -611,6 +611,15 @@
 /* 出撃準備の地図の右の一覧: 番号の下に、その目標が残っている人の色の四角を縦に（仲間の目標を出しているとき・数は出さない） */
 .map-pin-badge-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
 .map-pin-members { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+/* 仲間のピン（Discord 出撃共有・Issue #36）: 人ごとのメモ・必要な鍵、仲間だけのピンの操作 */
+.friend-pin-notes { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.friend-pin-note { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 4px; font-size: 10px; line-height: 1.35; }
+.friend-pin-note-name { color: var(--text-dim); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.friend-pin-note-memo { color: var(--text-secondary); white-space: pre-wrap; }
+.friend-pin-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.friend-pin-actions .btn { font-size: 10px; padding: 2px 7px; display: inline-flex; align-items: center; gap: 3px; }
+.map-pin-friend { filter: drop-shadow(0 0 1px #000) drop-shadow(0 1px 3px rgba(0,0,0,0.7)); }
+.friend-pin-info { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--text-dim); margin: 2px 0 4px; }
 .fb-goal-list { display: flex; flex-direction: column; gap: 3px; }
 /* 自分の目標の行（.delivery-chip）と同じ枠・余白。チェックボックスの位置は .fb-goal-spacer で空ける */
 .fb-goal { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; min-width: 0; }
