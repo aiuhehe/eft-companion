@@ -187,13 +187,13 @@
   .delivery-chip.is-checked { background: var(--state-ok-bg-mid); border-color: var(--state-ok); text-decoration: line-through; opacity: 0.6; }
   /* 目標の途中進捗の − / +（Issue #28・出撃準備タブの目標行・タスク詳細の目標一覧）。必要数に達した = .is-full（数の色だけ変わる） */
   .obj-progress { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
-  .obj-progress-btn { min-width: 22px; height: 22px; padding: 0 5px; line-height: 1; font-size: 14px; border-radius: 4px; cursor: pointer; background: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border); }
-  .obj-progress-btn:hover:not(:disabled) { border-color: var(--accent); }
-  .obj-progress-btn:disabled { opacity: 0.35; cursor: default; }
+  .obj-progress-btn { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center; line-height: 1; font-size: 14px; border-radius: 3px; cursor: pointer; background: var(--border); color: var(--text-primary); border: none; }
+  .obj-progress-btn:hover:not(:disabled) { background: var(--accent); color: var(--accent-on); }
+  .obj-progress-btn:disabled { background: var(--bg-secondary); color: var(--text-dim); cursor: default; }
   .obj-progress-num { min-width: 34px; text-align: center; font-size: 14px; font-weight: bold; color: var(--accent); }
   .obj-progress-need { font-size: 11px; font-weight: normal; color: var(--text-dim); }
   .obj-progress.is-full .obj-progress-num { color: var(--state-ok-text); }
-  .obj-progress.is-sm .obj-progress-btn { min-width: 18px; height: 18px; font-size: 12px; }
+  .obj-progress.is-sm .obj-progress-btn { width: 18px; height: 18px; font-size: 12px; }
   .obj-progress.is-sm .obj-progress-num { min-width: 28px; font-size: 12px; }
 
   /* ===== task-card 内部要素（詳細設計） ===== */

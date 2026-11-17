@@ -961,9 +961,9 @@
                                         <span style={{ color: allDone ? 'var(--state-ok-text)' : 'var(--text-primary)' }}>{item.name}</span>
                                         {foundInRaid && <span style={{ color: 'var(--warn)', fontSize: 10 }}>[FIR]</span>}
                                         <span style={{ color: 'var(--accent)' }}>×{count}</span>
-                                        <button onClick={() => stepObjProgress(entries, -1)} className="btn btn-sm" style={{ padding: '0 5px', minWidth: 22, lineHeight: 1, fontSize: 13 }}>−</button>
+                                        <button type="button" onClick={() => stepObjProgress(entries, -1)} disabled={delivered <= 0} className="obj-progress-btn" aria-label="1つ減らす">−</button>
                                         <span style={{ fontSize: 12, minWidth: 16, textAlign: 'center', color: allDone ? 'var(--state-ok-text)' : 'var(--text-primary)' }}>{delivered}</span>
-                                        <button onClick={() => stepObjProgress(entries, 1)} className="btn btn-sm" style={{ padding: '0 5px', minWidth: 22, lineHeight: 1, fontSize: 13 }}>+</button>
+                                        <button type="button" onClick={() => stepObjProgress(entries, 1)} disabled={allDone} className="obj-progress-btn" aria-label="1つ増やす">＋</button>
                                       </span>
                                     </Tooltip>
                                   );

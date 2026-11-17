@@ -1209,7 +1209,7 @@
         title={title || '途中まで進んだ数（− / + で入力。必要数に達してもチェックは付きません）'}>
         <button type="button" className="obj-progress-btn" disabled={done <= 0} onClick={() => stepObjProgress(pairs, -1)} aria-label="1つ減らす">−</button>
         <span className="obj-progress-num">{done}<span className="obj-progress-need">/{need}</span></span>
-        <button type="button" className="obj-progress-btn" disabled={full} onClick={() => stepObjProgress(pairs, 1)} aria-label="1つ増やす">+</button>
+        <button type="button" className="obj-progress-btn" disabled={full} onClick={() => stepObjProgress(pairs, 1)} aria-label="1つ増やす">＋</button>
       </span>
     );
   };
