@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EFT コンパニオン</title>
+<script>
+// 最後に使ったテーマの色を、CDN やアプリの読み込みより前に当てる（起動時の全画面ローディングもテーマの色で出すため・Issue #24）。
+// 値は applyTheme() が eft_theme_vars_v1 に保存する
+try {
+  var v = JSON.parse(localStorage.getItem('eft_theme_vars_v1') || 'null');
+  if (v) for (var k in v) if (/^--[a-z-]+$/.test(k)) document.documentElement.style.setProperty(k, String(v[k]));
+} catch (e) {}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>

@@ -12,5 +12,7 @@ const THEMES = [
 function applyTheme(themeId) {
   const t = THEMES.find(x => x.id === themeId) || THEMES[0];
   Object.entries(t.vars).forEach(([k,v]) => document.documentElement.style.setProperty(k,v));
+  // 次に開いたとき、アプリが動き出す前（起動時の全画面ローディング）から同じ色にするため（src/head.html で読む・Issue #24）
+  try { localStorage.setItem(THEME_VARS_CACHE_KEY, JSON.stringify(t.vars)); } catch (e) {}
 }
 

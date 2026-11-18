@@ -177,6 +177,7 @@ GraphQL が復旧すれば `fetchGraphQL()` が自動的にそちらを使い始
 | `eft_maps_v1` | マップ画像メタデータ（`{ [mapName]: { file, width, height } }`）— 自動取得・グローバル |
 | `eft_task_pins_v1` | タスク目標のピン座標配列（`[{ id, mapName, taskId, objectiveId, x, y, memo?, requiredItems?, memoImages? }]`）— グローバル。`memoImages` は詳細位置画像 `[{ id, name(省略名), dataUrl(JPEG) }]` |
 | `eft_discord_link_v1` | Discord 出撃共有の連携情報 `{ token, userName, linkedAt, lastSyncAt, lastSentAt, lastShareHash, hiddenMembers?, botUrl? }`（`lastPinsHash`/`lastPinsSentAt` = 前回 `PUT /api/pins` で送ったピン一式のハッシュと時刻。`hiddenMembers` = 出撃準備タブの参加者のボタンで外した人の userId 配列。旧 `hideFriends` は読み込み時に消す）（連携中＝同期する。オン/オフ設定は持たない。`lastShareHash`/`lastSentAt` は前回送った内容のハッシュと送信時刻＝同じ内容なら送らない判定用） — グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`・復元でも消さない）。`botUrl` は Bot の URL を埋め込まずにビルドしたときの予備入力のみ |
+| `eft_theme_vars_v1` | 最後に当てたテーマの CSS 変数 `{ "--accent": "#f6c90e", … }`（`applyTheme` が保存・`src/head.html` の先頭で読み、起動時の全画面ローディングからテーマの色にする・Issue #24）— グローバル。**全データバックアップに含めない**（`BACKUP_EXCLUDE_KEYS`） |
 | `eft_friend_pins_hidden_v1` | Discord 出撃共有で自分の画面でだけ隠した仲間のピン `["<userId>/<pinId>", …]` — グローバル。マップタブの「隠したピン N件を元に戻す」で消える |
 | `eft_custom_items_v1` | 登録タスク品（API に無いクエストアイテム等）`[{ id:'citem_…', name, shortName, iconLink(128px PNG dataURL) }]` — グローバル。ピンの `requiredItems` から id 参照 |
 

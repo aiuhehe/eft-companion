@@ -145,8 +145,10 @@ const BACKUP_TYPE = 'eft-tool-full-backup';
 const BACKUP_VERSION = 1;
 /** Discord 連携情報（連携トークンを含む・グローバル）。docs/Discord出撃共有Bot設計書.md §11.1 */
 const DISCORD_LINK_KEY = 'eft_discord_link_v1';
-/** バックアップに含めない（復元でも消さない・上書きしない）キー。連携トークンをファイルに残さないため */
-const BACKUP_EXCLUDE_KEYS = new Set([DISCORD_LINK_KEY]);
+/** 最後に当てたテーマの CSS 変数（applyTheme が保存し、src/head.html の先頭で読んで当てる・Issue #24）。設定から作り直せるのでバックアップには含めない */
+const THEME_VARS_CACHE_KEY = 'eft_theme_vars_v1';
+/** バックアップに含めない（復元でも消さない・上書きしない）キー。連携トークンをファイルに残さないため・テーマの色の控え */
+const BACKUP_EXCLUDE_KEYS = new Set([DISCORD_LINK_KEY, THEME_VARS_CACHE_KEY]);
 
 /** バックアップ対象の localStorage キー一覧（eft_ で始まるもの全て。BACKUP_EXCLUDE_KEYS を除く） */
 function getBackupKeys() {
