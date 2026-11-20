@@ -131,6 +131,23 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   .spinner { animation: spin 1s linear infinite; display: inline-block; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* ===== 起動時の全画面ローディング（Issue #24・15-render-open.js） ===== */
+  /* 角丸（四角⇔円）・回転・拡縮を同時に動かす幾何学的モーフィング。色はテーマのアクセントに合わせる */
+  .app-loading-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg-primary); }
+  .app-loading-morph { width: 42px; height: 42px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent), white 55%), var(--accent)); animation: app-loading-morph 2s linear infinite; }
+  .app-loading-text { color: var(--text-dim); font-size: 13px; letter-spacing: 0.05em; }
+  /* 1 周期（2 秒）で 2 回転＝1 秒に 1 回転。100% を 720deg にして逆回転に戻らないようにする */
+  @keyframes app-loading-morph {
+    0% { border-radius: 20%; transform: rotate(0deg) scale(1); }
+    25% { border-radius: 50%; transform: rotate(180deg) scale(0.9); }
+    50% { border-radius: 5%; transform: rotate(360deg) scale(1.1); }
+    75% { border-radius: 50%; transform: rotate(540deg) scale(0.9); }
+    100% { border-radius: 20%; transform: rotate(720deg) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-loading-morph { animation-duration: 8s; }
+  }
   .progress-bar { background: var(--border); height: 6px; border-radius: 3px; overflow: hidden; }
   .progress-fill { background: var(--accent); height: 100%; border-radius: 3px; transition: width 0.3s; }
   .progress-fill.green { background: var(--state-ok); }

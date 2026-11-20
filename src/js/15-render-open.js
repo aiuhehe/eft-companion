@@ -1,5 +1,12 @@
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '16px' }}>
+      {/* 起動時の全画面ローディング（Issue #24）: 最初の API データがそろうまで。失敗したらエラーを見せるため消す */}
+      {apiData.tasks.length === 0 && !loadError && (
+        <div className="app-loading-overlay" role="status" aria-live="polite">
+          <div className="app-loading-morph" />
+          <div className="app-loading-text">loading...</div>
+        </div>
+      )}
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
         <h1 style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 'bold', margin: 0, display:'flex', alignItems:'center', gap:8 }}>
