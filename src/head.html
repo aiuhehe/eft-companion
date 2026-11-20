@@ -16,7 +16,7 @@ try {
 </head>
 <body>
 <!-- 起動時の全画面ローディング（Issue #24）。React・Babel の読み込み中も出し、描画されたら App の同じ表示に置き換わる -->
-<div id="root"><div class="app-loading-overlay" role="status" aria-live="polite"><div class="app-loading-morph"></div><div class="app-loading-text">データを読み込んでいます</div></div></div>
+<div id="root"><div class="app-loading-overlay" role="status" aria-live="polite"><div class="app-loading-morph"></div><div class="app-loading-text">loading...</div></div></div>
 <!-- CDN のスクリプトはローディングより後に置く（head に置くとダウンロードが終わるまで画面が真っ白のまま＝回線が遅いとローディングが出ない・Issue #24） -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>

@@ -4,7 +4,7 @@
       {apiData.tasks.length === 0 && !loadError && (
         <div className="app-loading-overlay" role="status" aria-live="polite">
           <div className="app-loading-morph" />
-          <div className="app-loading-text">データを読み込んでいます</div>
+          <div className="app-loading-text">loading...</div>
         </div>
       )}
       {/* Header */}
