@@ -689,3 +689,13 @@
 .obj-main { flex: 1 1 180px; min-width: 0; }
 .obj-pin-side { flex: 0 0 auto; max-width: min(260px, 100%); display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 3px; }
 .obj-pin-side div { align-items: flex-end; justify-content: flex-end; }
+
+/* 出撃準備タブ「スクショからタスク登録」の結果パネル（認識結果・完了候補を別々の枠で囲む）。
+   見出しと操作ボタンをパネル上部の帯にまとめ、どのボタンがどの一覧に効くかを分かりやすくする */
+.ocr-panel { margin-top: 16px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; background: var(--bg-primary); overflow: hidden; }
+.ocr-panel.is-match { border-left-color: var(--accent); }
+.ocr-panel.is-complete { border-left-color: var(--state-ok); }
+.ocr-panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 12px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); }
+.ocr-panel-title { font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
+.ocr-panel-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ocr-panel-body { padding: 10px 12px; }
