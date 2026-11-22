@@ -1026,15 +1026,15 @@
                 const allTasksForSearch = [...apiData.tasks, ...customTasks];
                 const updateM = (i, patch) => setRaidOcrMatches(prev => prev.map((x, j) => j === i ? { ...x, ...patch } : x));
                 return (
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <div className="ocr-panel is-match">
+                    <div className="ocr-panel-head">
+                      <span className="ocr-panel-title" style={{ color: 'var(--accent)' }}>
                         <Icon name="clipboard-list" size={13} color="var(--accent)" /> 認識結果
                         <span style={{ fontWeight: 'normal', fontSize: 11, color: 'var(--text-secondary)', marginLeft: 4 }}>
                           ({raidOcrMatches.filter(m => m.checked && m.task).length}件追加予定)
                         </span>
                       </span>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div className="ocr-panel-actions">
                         <button className="btn btn-gray btn-sm" onClick={() => setRaidOcrMatches(prev => prev.map(m => m.task ? { ...m, checked: true } : m))}>全選択</button>
                         <button className="btn btn-gray btn-sm" onClick={() => setRaidOcrMatches(prev => prev.map(m => ({ ...m, checked: false })))}>全解除</button>
                         <button className="btn btn-yellow btn-sm"
@@ -1045,7 +1045,7 @@
                         </button>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div className="ocr-panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {raidOcrMatches.map((m, i) => {
                         const searchResults = (m.inlineSearch || '').trim().length >= 1
                           ? allTasksForSearch.filter(t => (t.name || '').toLowerCase().includes(m.inlineSearch.toLowerCase())).slice(0, 8)
@@ -1329,15 +1329,15 @@
 
               {/* 完了候補（進行中だがOCRに写っていなかったタスク） */}
               {raidCompleteCandidates.length > 0 && (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--state-ok)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <div className="ocr-panel is-complete">
+                  <div className="ocr-panel-head">
+                    <span className="ocr-panel-title" style={{ color: 'var(--state-ok)' }}>
                       <Icon name="circle-check" size={13} color="var(--state-ok)" /> 完了候補
                       <span style={{ fontWeight: 'normal', fontSize: 11, color: 'var(--text-secondary)', marginLeft: 4 }}>
                         ジャーナルに写っていない進行中タスク（{raidCompleteCandidates.filter(c => c.checked).length}件選択）
                       </span>
                     </span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                    <div className="ocr-panel-actions">
                       <button className="btn btn-gray btn-sm" onClick={() => setRaidCompleteCandidates(prev => prev.map(c => ({ ...c, checked: true })))}>全選択</button>
                       <button className="btn btn-gray btn-sm" onClick={() => setRaidCompleteCandidates(prev => prev.map(c => ({ ...c, checked: false })))}>全解除</button>
                       {raidCompleteCandidates.some(c => c.checked) ? (
@@ -1360,11 +1360,11 @@
                       </label>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div className="ocr-panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     {raidCompleteCandidates.map((c, i) => (
                       <div key={c.taskId} style={{
                         display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                        background: 'var(--state-ok-bg-faint)', border: '1px solid var(--state-ok-border-weak)',
+                        background: 'var(--bg-primary)', border: '1px solid var(--border)',
                         borderRadius: 6,
                       }}>
                         <input type="checkbox" checked={c.checked}
